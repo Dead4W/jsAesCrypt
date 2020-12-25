@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<head>
+	<title></title>
+	<script src="libs/core.min.js"></script>
+	<script src="libs/cipher-core.min.js"></script>
+	<script src="libs/aes.min.js"></script>
+	<script src="libs/hmac.min.js"></script>
+	<script src="libs/sha256.min.js"></script>
+	<script src="libs/pad-nopadding.min.js"></script>
+	<script src="libs/enc-uint8array.js"></script>
+	<script src="libs/enc-utf16.js"></script>
+	<script src="libs/utilities.js"></script>
+	<script src="libs/aes_crypt.js"></script>
+	<style>
+		.app {
+			position: relative;
+			margin: auto;
+			width: 800px;
+			padding: 15px 30px;
+		}
+
+		.logo{
+			width: 100%;
+		}
+
+		button {
+			border: 1px solid black;
+			background: #fff;
+			padding: 5px 0;
+			width: 120px;
+			margin: 5px 0;
+		}
+	</style>
+</head>
+<body>
+	<div class="app">
+		<img class="logo" src="aescrypt_header.png">
+		<h1>
+			jsAesCrypt Demo
+		</h1>
+
+		<input type="text" id="password" placeholder="Password">
+		<br>
+		<input type="file" id="file">
+		<br>
+		<br>
+		<button onclick="readFile('file', encryptFile);return false;">Encrypt File</button>
+		<br>
+		<button onclick="readFile('file', decryptFile);return false;">Decrypt File</button>
+	</div>
+	<script type="text/javascript">
+
+		window.startTime = 0;
+		var aes = AesCrypt();
+
+		function readFile(inputFileId, callback) {
+			var file = document.getElementById(inputFileId).files[0];
+			var file_name = document.getElementById(inputFileId).value;
+			if (file) {
+				var reader = new FileReader();
+				reader.readAsArrayBuffer(file);
+
+				var aes = AesCrypt();
+
+				reader.onload = function(evt) {
+					callback(reader.result, file_name.split(/(\\|\/)/g).pop());
+				};
+				reader.onerror = function (evt) {
+					alert("ERROR")
+				}
+			}
+		}
+
+		function encryptFile(result, file_name) {
+			var passw = document.getElementById("password").value;
+			var file = aes.encrypt(result, passw);
+			saveByteArray(file, file_name + ".aes");
+		}
+
+		function decryptFile(result, file_name) {
+			var passw = document.getElementById("password").value;
+			var file = aes.decrypt(result, passw);
+			saveByteArray(file, file_name.split('.').slice(0, -1).join('.'));
+		}
+
+	</script>
+</body>
+</html>
