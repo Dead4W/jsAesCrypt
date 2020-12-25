@@ -2,9 +2,9 @@ jsAesCrypt
 ===============
 jsAesCrypt is a Javascript file-encryption library and script that uses AES256-CBC to encrypt/decrypt files and binary streams.
 
-jsAesCrypt is compatible with the `AES Crypt`_ `file format`_ (version 2).
+jsAesCrypt is compatible with the `AES Crypt` `file format` (version 2).
 
-It is Free Software, released under the `Apache License, Version 2.0`_.
+It is Free Software, released under the `Apache License, Version 2.0`.
 
 jsAesCrypt is brought to you by Ilya Zedgenizov - dead4w@gmail.com.
  
