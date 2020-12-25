@@ -34,13 +34,15 @@
 </head>
 <body>
 	<div class="app">
-		<img class="logo" src="aescrypt_header.png">
+		<img class="logo" src="aescrypt_header.png" alt="aesCrypt logo">
 		<h1>
 			jsAesCrypt Demo
 		</h1>
 
+		Password
 		<input type="text" id="password" placeholder="Password">
 		<br>
+		File
 		<input type="file" id="file">
 		<br>
 		<br>
@@ -51,19 +53,19 @@
 	<script type="text/javascript">
 
 		window.startTime = 0;
-		var aes = AesCrypt();
+		const aes = AesCrypt();
 
 		function readFile(inputFileId, callback) {
-			var file = document.getElementById(inputFileId).files[0];
-			var file_name = document.getElementById(inputFileId).value;
+			const file = document.getElementById(inputFileId).files[0];
+			const file_name = document.getElementById(inputFileId).value;
 			if (file) {
-				var reader = new FileReader();
+				const reader = new FileReader();
 				reader.readAsArrayBuffer(file);
 
-				var aes = AesCrypt();
+				const aes = AesCrypt();
 
 				reader.onload = function(evt) {
-					callback(reader.result, file_name.split(/(\\|\/)/g).pop());
+					callback(reader.result, file_name.split(/([\\/])/g).pop());
 				};
 				reader.onerror = function (evt) {
 					alert("ERROR")
@@ -72,14 +74,14 @@
 		}
 
 		function encryptFile(result, file_name) {
-			var passw = document.getElementById("password").value;
-			var file = aes.encrypt(result, passw);
+			const passw = document.getElementById("password").value;
+			const file = aes.encrypt(result, passw);
 			saveByteArray(file, file_name + ".aes");
 		}
 
 		function decryptFile(result, file_name) {
-			var passw = document.getElementById("password").value;
-			var file = aes.decrypt(result, passw);
+			const passw = document.getElementById("password").value;
+			const file = aes.decrypt(result, passw);
 			saveByteArray(file, file_name.split('.').slice(0, -1).join('.'));
 		}
 

@@ -1,14 +1,14 @@
 (function () {
     // Shortcuts
-    var C = CryptoJS;
-    var C_lib = C.lib;
-    var WordArray = C_lib.WordArray;
-    var C_enc = C.enc;
+    const C = CryptoJS;
+    const C_lib = C.lib;
+    const WordArray = C_lib.WordArray;
+    const C_enc = C.enc;
 
     /**
      * Uint8Arr encoding strategy.
      */
-    var Uint8Arr = C_enc.Uint8Arr = {
+    const Uint8Arr = C_enc.Uint8Arr = {
 
 
         /**
@@ -26,13 +26,13 @@
          */
         decode: function (wordArray) {
             // Shortcuts
-            var words = wordArray.words;
-            var sigBytes = wordArray.sigBytes;
+            const words = wordArray.words;
+            const sigBytes = wordArray.sigBytes;
 
             // Convert
-            var intArray = [];
-            for (var i = 0; i < sigBytes; i++) {
-                var bite = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+            const intArray = [];
+            for (let i = 0; i < sigBytes; i ++) {
+                const bite = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
                 intArray.push(bite);
             }
 
@@ -54,12 +54,12 @@
          */
         parse: function (uint8arr) {
             // Shortcut
-            var words = [];
-            var arrLength = uint8arr.length;
+            const words = [];
+            const arrLength = uint8arr.length;
 
             // Convert
-            for (var i = 0; i < arrLength; i++) {
-                words[i*2 >>> 3] |= uint8arr[i] << (24 - (i*2 % 8) * 4);
+            for (let i = 0; i < arrLength; i ++) {
+                words[i * 2 >>> 3] |= uint8arr[i] << (24 - (i * 2 % 8) * 4);
             }
 
             return new WordArray.init(words, arrLength);

@@ -32,7 +32,7 @@ Here is an example showing encryption and decryption of a file:
 
 ```javascript
 // Init aesCrypt library
-var aes = AesCrypt();
+const aes = AesCrypt();
 
 var password = "foopassword"
 var text = "secret_secret_secret_secret"

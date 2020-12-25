@@ -1,6 +1,6 @@
 AesCrypt = function () {
 
-    var info = {
+    const info = {
         // jsAesCrypt version
         version: "0.1",
 
@@ -35,10 +35,10 @@ AesCrypt = function () {
 
     function stretch(passw, iv1) {
         // hash the external iv and the password 8192 times
-        var digest = Utilities.encode_to_words(iv1 + ("\x00".repeat(16)));
+        let digest = Utilities.encode_to_words(iv1 + ("\x00".repeat(16)));
 
-        for (var i = 0; i < 8192; i ++) {
-            var passHash = CryptoJS.algo.SHA256.create();
+        for (let i = 0; i < 8192; i ++) {
+            const passHash = CryptoJS.algo.SHA256.create();
             passHash.update(digest);
             passHash.update(Utilities.encode_to_words(passw, "Utf16LE"));
             digest = passHash.finalize();
@@ -49,7 +49,7 @@ AesCrypt = function () {
 
     // see https://www.aescrypt.com/aes_file_format.html
     function createAesCryptFormat(content, iv1, c_iv_key, hmac0, hmac1, encryptor0) {
-        var result = new Uint8Array([]);
+        let result = new Uint8Array([]);
 
         // header
         result = result.appendBytes("AES");
@@ -62,7 +62,7 @@ AesCrypt = function () {
         result = result.appendBytes(0x0);
 
         // setup "CREATED-BY" extension
-        var cby = "jsAesCrypt " + info.version;
+        const cby = "jsAesCrypt " + info.version;
 
         // "CREATED-BY" extension length
         result = result.appendBytes(0x0);
@@ -92,10 +92,10 @@ AesCrypt = function () {
         // HMAC-SHA256 of the encrypted iv and key
         result = result.appendBytes(hmac1.finalize().toString(CryptoJS.enc.Latin1));
 
-        var fs16 = String.fromCharCode(0);
-        var blockLength = Math.ceil(content.byteLength / info.bufferSize);
+        let fs16 = String.fromCharCode(0);
+        const blockLength = Math.ceil(content.byteLength / info.bufferSize);
 
-        for (var i = 0; i < blockLength; i++) {
+        for (let i = 0; i < blockLength; i++) {
 
             let fdata = new Uint8Array(content.slice(i * info.bufferSize, (i + 1) * info.bufferSize));
 
@@ -161,7 +161,7 @@ AesCrypt = function () {
         }
 
         // file bytes reader
-        var file = Utilities.fileReader(new Uint8Array(content));
+        const file = Utilities.fileReader(new Uint8Array(content));
 
         // check if file is in AES Crypt format (also min length check)
         if( file.readBytesAsString(3) !== "AES" || file.getLength() < 136 ) {
@@ -204,30 +204,30 @@ AesCrypt = function () {
         }
 
         // read external iv
-        var iv1 = file.readBytesAsString(16);
+        const iv1 = file.readBytesAsString(16);
         if( iv1.length !== 16 ) {
             console.warn("File is corrupted.");
             return false;
         }
 
         // stretch password and iv
-        var key = stretch(passw, iv1);
+        const key = stretch(passw, iv1);
 
         // read encrypted main iv and key
-        var c_iv_key = file.readBytesAsString(48)
+        const c_iv_key = file.readBytesAsString(48);
         if( c_iv_key.length !== 48 ) {
             console.warn("File is corrupted.");
             return false;
         }
 
         // read HMAC-SHA256 of the encrypted iv and key
-        var hmac1 = file.readBytesAsString(32)
+        const hmac1 = file.readBytesAsString(32);
         if( hmac1.length !== 32 ) {
             console.warn("File is corrupted.");
             return false;
         }
 
-        var hmac1Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(key));
+        const hmac1Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(key));
         hmac1Act.update(
             Utilities.encode_to_words(c_iv_key)
         );
@@ -239,22 +239,22 @@ AesCrypt = function () {
         }
 
         // instantiate AES cipher
-        var decryptor1 = createDecryptor(key, iv1);
+        const decryptor1 = createDecryptor(key, iv1);
 
         // decrypt main iv and key
-        var iv_key = decryptor1.process(Utilities.encode_to_words(c_iv_key)).toString(CryptoJS.enc.Latin1) + decryptor1.finalize().toString(CryptoJS.enc.Latin1)
+        const iv_key = decryptor1.process(Utilities.encode_to_words(c_iv_key)).toString(CryptoJS.enc.Latin1) + decryptor1.finalize().toString(CryptoJS.enc.Latin1);
 
         // get internal iv and key
-        var iv0 = iv_key.substr(0, info.AESBlockSize);
-        var intKey = iv_key.substr(info.AESBlockSize, 32);
+        const iv0 = iv_key.substr(0, info.AESBlockSize);
+        const intKey = iv_key.substr(info.AESBlockSize, 32);
 
         // instantiate another AES cipher
-        var decryptor0 = createDecryptor(intKey, iv0);
+        const decryptor0 = createDecryptor(intKey, iv0);
 
         // instantiate actual HMAC-SHA256 of the ciphertext
-        var hmac0Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(intKey));
+        const hmac0Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(intKey));
 
-        var result = new Uint8Array([]);
+        let result = new Uint8Array([]);
 
         // decrypt blocks
         while( file.getCurrentPosition() < file.getLength() - 32 - 1 - info.AESBlockSize ) {
@@ -279,7 +279,7 @@ AesCrypt = function () {
 
         // last block reached, remove padding if needed
         // read last block
-        if( file.getCurrentPosition() != file.getLength() - 32 - 1 ) {
+        if( file.getCurrentPosition() !== file.getLength() - 32 - 1 ) {
             // read typed array
             cText = file.readBytes(info.AESBlockSize);
 
@@ -297,19 +297,19 @@ AesCrypt = function () {
         // update HMAC
         hmac0Act.update(cText);
 
-        var fs16 = file.readBytesAsInt(1);
+        const fs16 = file.readBytesAsInt(1);
 
-        var pText = decryptor0.process(cText).toString(CryptoJS.enc.Latin1) + decryptor0.finalize().toString(CryptoJS.enc.Latin1);
+        let pText = decryptor0.process(cText).toString(CryptoJS.enc.Latin1) + decryptor0.finalize().toString(CryptoJS.enc.Latin1);
 
         // remove padding
-        var toremove = ((16 - fs16) % 16)
+        const toremove = ((16 - fs16) % 16);
         if( toremove !== 0 ) {
             pText = pText.substr(0, pText.length - toremove);
         }
 
         result = result.appendBytes(pText);
 
-        var hmac0 = file.readBytesAsString(32);
+        const hmac0 = file.readBytesAsString(32);
 
         if( hmac0.length !== 32 ) {
             console.warn("File is corrupted.");
@@ -346,51 +346,51 @@ AesCrypt = function () {
         }
 
         // encryption key
-        var iv1 = Utilities.urandom(info.AESBlockSize)
+        const iv1 = Utilities.urandom(info.AESBlockSize);
 
         // stretch password and iv
-        var key = stretch(passw, iv1)
+        const key = stretch(passw, iv1);
 
         // generate random main iv
-        var iv0 = Utilities.urandom(info.AESBlockSize)
+        const iv0 = Utilities.urandom(info.AESBlockSize);
 
         // generate random internal key
-        var intKey = Utilities.urandom(32)
+        const intKey = Utilities.urandom(32);
 
-        encryptor0 = createEncryptor(intKey, iv0);
+        const encryptor0 = createEncryptor(intKey, iv0);
 
         // instantiate HMAC-SHA256 for the ciphertext
-        var hmac0 = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(intKey));
+        const hmac0 = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(intKey));
 
         // instantiate another AES cipher
-        var encryptor1 = createEncryptor(key, iv1);
+        const encryptor1 = createEncryptor(key, iv1);
 
         // encrypt main iv and key
-        var c_iv_key = encryptor1.process(Utilities.encode_to_words(iv0 + intKey)).toString(CryptoJS.enc.Latin1) + encryptor1.finalize().toString(CryptoJS.enc.Latin1)
+        const c_iv_key = encryptor1.process(Utilities.encode_to_words(iv0 + intKey)).toString(CryptoJS.enc.Latin1) + encryptor1.finalize().toString(CryptoJS.enc.Latin1);
 
         //# calculate HMAC-SHA256 of the encrypted iv and key
-        var hmac1 = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(key));
+        const hmac1 = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(key));
         hmac1.update(Utilities.encode_to_words(c_iv_key));
 
         return createAesCryptFormat(content, iv1, c_iv_key, hmac0, hmac1, encryptor0);
     }
 
     Uint8Array.prototype.appendBytes = function (input) {
-        var tmp;
+        let tmp;
 
         if (typeof (input) == "number") {
-            hex_string = input.toString(16);
+            const hex_string = input.toString(16);
             tmp = new Uint8Array(hex_string.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
         } else if (typeof (input) == "string") {
             tmp = new Uint8Array(input.length);
-            for (var i = 0; i < input.length; i ++) {
+            for (let i = 0; i < input.length; i ++) {
                 tmp[i] = input.charCodeAt(i);
             }
         } else {
             tmp = new Uint8Array(input);
         }
 
-        var new_uint8_arr = new Uint8Array(this.length + tmp.length);
+        const new_uint8_arr = new Uint8Array(this.length + tmp.length);
 
         new_uint8_arr.set(this);
         new_uint8_arr.set(tmp, this.length);
@@ -411,13 +411,13 @@ AesCrypt = function () {
 
 }
 
-var saveByteArray = (function () {
+const saveByteArray = (function () {
     return function (data, name) {
-        var a = document.createElement("a");
+        const a = document.createElement("a");
         document.body.appendChild(a);
         a.style = "display: none";
 
-        var blob = new Blob([data], {type: "octet/stream"}),
+        const blob = new Blob([data], {type: "octet/stream"}),
             url = window.URL.createObjectURL(blob);
         a.href = url;
         a.download = name;

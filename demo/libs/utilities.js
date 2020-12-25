@@ -6,16 +6,16 @@ Utilities = {
     },
 
     urandom: function(length) {
-        var out = "";
-        for (var i = 0; i < length; i ++) {
+        let out = "";
+        for (let i = 0; i < length; i ++) {
             out += String.fromCharCode(Utilities.random_int(0, 256))
         }
         return out;
     },
 
     fillArray: function(value, len) {
-        var arr = [];
-        for (var i = 0; i < len; i ++) {
+        const arr = [];
+        for (let i = 0; i < len; i ++) {
             arr.push(value);
         }
         return arr;
