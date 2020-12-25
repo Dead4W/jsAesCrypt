@@ -13,6 +13,19 @@ with write access to the encrypted file may alter the corresponding plaintext fi
 
 **NOTE**: there is no low-level memory management in Javascript, hence it is not possible to wipe memory areas were sensitive information was stored.
 
+Requirements
+------------------------
+
+ - CryptoJS (https://cryptojs.gitbook.io/docs/)
+    - core.js
+    - cipher-core.js
+    - aes.js
+    - hmac.js
+    - sha256.js
+    - pad-nopadding.js
+    - enc-utf16.js
+ - enc-uint8array.js (Custom Uint8Array encoding)
+
 Library usage example
 ------------------------
 Here is an example showing encryption and decryption of a file:
