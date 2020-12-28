@@ -37,28 +37,27 @@ Here is an example showing encryption and decryption of a file:
 // Init aesCrypt library
 const aes = AesCrypt();
 
+let fileSecret = document.getElementById("fileSecret").files[0];
+
 var password = "foopassword"
-var text = "secret_secret_secret_secret"
 
 // encryption/decryption
 
-// encodeder text to Uint8Array
-var enc = new TextEncoder();
-
-// enc.encode(text) === text_words
-var text_words = aes.utils.encode_to_words(text);
-
 // encrypt typed array (Uint8Array)
-aes.encrypt(enc.encode(text), password).then((encrypted) => {
+aes.encrypt(fileSecret, password).then((encrypted) => {
 
-  // decrypt typed array (Uint8Array)
-  aes.decrypt(encrypted, password).then((r) => {
+  console.log(encrypted);
+});
 
-    // transform Uint8Array to Latin1 string
-    let result = aes.utils.bytes_to_latin1(decrypted);
-    
-    console.log(result);
-  });
+let fileEncrypted = document.getElementById("fileEncrypted").files[0];
+
+// decrypt typed array (Uint8Array)
+aes.decrypt(fileEncrypted, password).then((decrypted) => {
+
+  // transform Uint8Array to Latin1 string
+  let secret = aes.utils.bytes_to_latin1(decrypted);
+  
+  console.log(secret);
 });
 ```
 

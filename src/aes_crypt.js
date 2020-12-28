@@ -246,7 +246,7 @@ AesCrypt = function () {
      * @example
      *     var decrypted = decrypt(typedArray, Password);
      *
-     * @param content decrypted typed array
+     * @param fileObj file element object
      * @param passw string password to decrypt
      */
 
@@ -431,7 +431,7 @@ AesCrypt = function () {
      * @example
      *     var encrypted = encrypt(typedArray, Password);
      *
-     * @param fileObj file object
+     * @param fileObj file element object
      * @param passw string password to encrypt
      */
 
