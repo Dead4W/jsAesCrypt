@@ -1,5 +1,7 @@
+/** global: Utilities */
+/** global: CryptoJS */
 
-Utilities = {
+window.Utilities = {
 
     random_int: function(min, max) {
         return Math.floor(Math.random() * (max - min) + min);
@@ -8,7 +10,7 @@ Utilities = {
     urandom: function(length) {
         let out = "";
         for (let i = 0; i < length; i ++) {
-            out += String.fromCharCode(Utilities.random_int(0, 256))
+            out += String.fromCharCode(this.random_int(0, 256))
         }
         return out;
     },
