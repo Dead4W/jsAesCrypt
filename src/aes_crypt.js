@@ -141,7 +141,7 @@ AesCrypt = function () {
     }
 
     // see https://www.aescrypt.com/aes_file_format.html
-    async function createAesCryptFormat(fileObj, iv1, c_iv_key, hmac0, hmac1, encryptor0) {
+    async function createAesCryptFormat(fileObj, iv1, c_iv_key, hmac0, hmac1, encryptor0, callback_progress) {
         let result = new Uint8Array([]);
 
         // header
@@ -190,6 +190,9 @@ AesCrypt = function () {
 
         const blockLength = Math.ceil(file.getLength() / info.bufferSize);
 
+        let total = Math.ceil( (file.getLength() - file.getCurrentPosition()) / info.bufferSize );
+        let counter = 0;
+
         while( file.getCurrentPosition() < file.getLength() ) {
 
             let fdata = await file.readBytes(info.bufferSize);
@@ -223,7 +226,8 @@ AesCrypt = function () {
             hmac0.update(utils.encode_to_words(cText));
 
             result = result.appendBytes(cText);
-
+            
+            callback_progress(++counter / total);
         }
 
         result = result.appendBytes(fs16);
@@ -247,9 +251,10 @@ AesCrypt = function () {
      *
      * @param fileObj file element object
      * @param passw string password to decrypt
+     * @callback_progress callback function (current) => { 0 < current <= 1 }
      */
 
-    async function decrypt(fileObj, passw) {
+    async function decrypt(fileObj, passw, callback_progress = (c) => {}) {
         if( passw.length > info.maxPassLen ) {
             console.warn("Password is too long.");
             return false;
@@ -350,6 +355,8 @@ AesCrypt = function () {
         let hmac0Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, utils.encode_to_words(intKey));
 
         let result = new Uint8Array([]);
+        let total = Math.ceil( (file.getLength() - file.getCurrentPosition() - 32 - 1 - info.AESBlockSize) / info.bufferSize ) + 1;
+        let counter = 0;
 
         // decrypt blocks
         while( file.getCurrentPosition() < file.getLength() - 32 - 1 - info.AESBlockSize ) {
@@ -368,6 +375,7 @@ AesCrypt = function () {
             hmac0Act.update(cText)
             // decrypt data and write it to output file
             result = result.appendBytes(decryptor0.process(cText).toString(CryptoJS.enc.Latin1));
+            callback_progress(++counter / total);
         }
 
         var cText;
@@ -416,6 +424,8 @@ AesCrypt = function () {
             return false;
         }
 
+        callback_progress(1);
+
         return result;
     }
 
@@ -432,9 +442,10 @@ AesCrypt = function () {
      *
      * @param fileObj file element object
      * @param passw string password to encrypt
+     * @callback_progress callback function (current) => { 0 < current <= 1 }
      */
 
-    async function encrypt(fileObj, passw) {
+    async function encrypt(fileObj, passw, callback_progress = (c) => {}) {
         if( passw.length > info.maxPassLen ) {
             console.warn("Password is too long.");
             return false;
@@ -467,7 +478,7 @@ AesCrypt = function () {
         const hmac1 = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, utils.encode_to_words(key));
         hmac1.update(utils.encode_to_words(c_iv_key));
 
-        return await createAesCryptFormat(fileObj, iv1, c_iv_key, hmac0, hmac1, encryptor0);
+        return await createAesCryptFormat(fileObj, iv1, c_iv_key, hmac0, hmac1, encryptor0, callback_progress);
     }
 
     Uint8Array.prototype.appendBytes = function (input) {

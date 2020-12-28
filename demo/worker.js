@@ -13,6 +13,15 @@ self.importScripts(
 	base_libs + "aes_crypt.min.js",
 );
 
+let last_progress = 0;
+
+function callback_progress(c) {
+	let progress = Math.floor(c*100);
+	if( last_progress === progress ) return;
+
+	postMessage(["PROGRESS", last_progress = progress]);
+}
+
 onmessage = function(e) {
 	let data = e.data;
 	let action = data[0];
@@ -25,11 +34,11 @@ onmessage = function(e) {
 		let passw = data[2];
 
 		if( action === "ENCRYPT" ) {
-				aes.encrypt(file, passw).then((r) => {
+				aes.encrypt(file, passw, callback_progress).then((r) => {
 					postMessage(["ENCRYPT", r, file_name + ".aes"]);
 				});
 		} else {
-			aes.decrypt(file, passw).then((r) => {
+			aes.decrypt(file, passw, callback_progress).then((r) => {
 				postMessage(["DECRYPT", r, file_name.split('.').slice(0, -1).join('.')]);
 			});
 		}
