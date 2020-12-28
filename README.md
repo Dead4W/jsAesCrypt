@@ -1,6 +1,6 @@
 jsAesCrypt
 
-[![Scrutinizer Code Quality](https://img.shields.io/scrutinizer/g/Dead4W/jsAesCrypt.svg?style=flat)](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/badges/quality-score.png?b=async)](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/)
 
 ------------------------
 jsAesCrypt is a Javascript file-encryption library and script that uses AES256-CBC to encrypt/decrypt files and binary streams.
@@ -60,12 +60,6 @@ aes.encrypt(enc.encode(text), password).then((encrypted) => {
     console.log(result);
   });
 });
-
-// decrypt typed array (Uint8Array)
-var decrypted = aes.decrypt(encrypted, password);
-
-// transform Uint8Array to Latin1 string
-var result = aes.utils.bytes_to_latin1(decrypted);
 ```
 
 **This is the most straightforward way to use jsAesCrypt, and should be preferred.**
