@@ -1,6 +1,7 @@
+/** global: CryptoJS */
+
 (function () {
     // Shortcuts
-    /** global: CryptoJS */
     const C = CryptoJS;
     const C_lib = C.lib;
     const WordArray = C_lib.WordArray;
