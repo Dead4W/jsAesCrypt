@@ -1,7 +1,7 @@
 AesCrypt = function () {
     let info = {
         // jsAesCrypt version
-        version: "0.12a",
+        version: "0.13a",
 
         // encryption/decryption buffer size - 32K
         bufferSize: 32 * 1024,

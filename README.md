@@ -43,16 +43,18 @@ var password = "foopassword"
 
 // encryption/decryption
 
-// encrypt typed array (Uint8Array)
-aes.encrypt(fileSecret, password).then((encrypted) => {
+// **IMPORTANT** Only for workers!
+let progress_callback = (current) => {let percent = current * 100;};
 
+// encrypt typed array (Uint8Array)
+aes.encrypt(fileSecret, password, progress_callback).then((encrypted) => {
   console.log(encrypted);
 });
 
 let fileEncrypted = document.getElementById("fileEncrypted").files[0];
 
 // decrypt typed array (Uint8Array)
-aes.decrypt(fileEncrypted, password).then((decrypted) => {
+aes.decrypt(fileEncrypted, password, progress_callback).then((decrypted) => {
 
   // transform Uint8Array to Latin1 string
   let secret = aes.utils.bytes_to_latin1(decrypted);
