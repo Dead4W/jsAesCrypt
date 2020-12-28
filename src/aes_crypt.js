@@ -1,5 +1,4 @@
-AesCrypt = function () {
-
+(function () {
     let info = {
         // jsAesCrypt version
         version: "0.12a",
@@ -498,11 +497,11 @@ AesCrypt = function () {
         return info;
     }
 
-    return {
+    window.AesCrypt = {
         encrypt: encrypt,
         decrypt: decrypt,
         utils: utils,
         getInfo: getInfo
     }
 
-}
+})
