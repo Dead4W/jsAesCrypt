@@ -48,11 +48,24 @@
 		<button onclick="encryptFile('file');return false;">Encrypt File</button>
 		<br>
 		<button onclick="decryptFile('file');return false;">Decrypt File</button>
+		<br>
+		<br>
+		<br>
+		<button onclick="encryptFileWorker('file');return false;">Encrypt File WORKER</button>
+		<br>
+		<button onclick="decryptFileWorker('file');return false;">Decrypt File WORKER</button>
 	</div>
 	<script type="text/javascript">
 
+		var myWorker = new Worker("worker.js");
+
+		var start = +(new Date())
+
 		let saveByteArray = (function () {
 		    return function (data, name) {
+				var end = +(new Date())
+				console.log("runtime: " + (end - start))
+
 		        let a = document.createElement("a");
 		        document.body.appendChild(a);
 		        a.style = "display: none";
@@ -69,11 +82,40 @@
 
 		let aes = AesCrypt();
 
+		myWorker.onmessage = function(e) {
+
+			let data = e.data;
+			let action = data[0];
+
+			if( action === "ENCRYPT" || action === "DECRYPT" ) {
+				myWorker.terminate();
+				myWorker = new Worker("worker.js");
+
+				saveByteArray(data[1], data[2]);
+			}
+		}
+
+		function encryptFileWorker(inputFileId) {
+			let file = document.getElementById(inputFileId).files[0];
+			let file_name = document.getElementById(inputFileId).value.split(/([\\/])/g).pop();
+			let passw = document.getElementById("password").value;
+
+			myWorker.postMessage(["ENCRYPT", file, passw, file_name]);
+		}
+
+		function decryptFileWorker(inputFileId) {
+			let file = document.getElementById(inputFileId).files[0];
+			let file_name = document.getElementById(inputFileId).value.split(/([\\/])/g).pop();
+			let passw = document.getElementById("password").value;
+
+			myWorker.postMessage(["DECRYPT", file, passw, file_name]);
+		}
+
 		function encryptFile(inputFileId) {
 			let file = document.getElementById(inputFileId).files[0];
 			let file_name = document.getElementById(inputFileId).value.split(/([\\/])/g).pop();
-
 			let passw = document.getElementById("password").value;
+
 			aes.encrypt(file, passw).then((r) => {
 				saveByteArray(r, file_name + ".aes");
 			});
@@ -82,8 +124,8 @@
 		function decryptFile(inputFileId) {
 			let file = document.getElementById(inputFileId).files[0];
 			let file_name = document.getElementById(inputFileId).value.split(/([\\/])/g).pop();
-
 			let passw = document.getElementById("password").value;
+
 			aes.decrypt(file, passw).then((r) => {
 				saveByteArray(r, file_name.split('.').slice(0, -1).join('.'));
 			});

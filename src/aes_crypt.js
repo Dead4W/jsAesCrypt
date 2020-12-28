@@ -1,10 +1,10 @@
-(function () {
+AesCrypt = function () {
     let info = {
         // jsAesCrypt version
         version: "0.12a",
 
-        // encryption/decryption buffer size - 16M
-        bufferSize: 16 * 1024 * 1024,
+        // encryption/decryption buffer size - 32K
+        bufferSize: 32 * 1024,
 
         // file format version
         fileFormatVersion: 0x02,
@@ -497,11 +497,11 @@
         return info;
     }
 
-    window.AesCrypt = {
+    return {
         encrypt: encrypt,
         decrypt: decrypt,
         utils: utils,
         getInfo: getInfo
     }
 
-})
+};
