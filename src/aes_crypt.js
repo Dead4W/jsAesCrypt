@@ -1,11 +1,11 @@
 AesCrypt = function () {
 
-    const info = {
+    let info = {
         // jsAesCrypt version
-        version: "0.1",
+        version: "0.12a",
 
-        // encryption/decryption buffer size - 8M
-        bufferSize: 8 * 1024 * 1024,
+        // encryption/decryption buffer size - 16M
+        bufferSize: 16 * 1024 * 1024,
 
         // file format version
         fileFormatVersion: 0x02,
@@ -17,6 +17,100 @@ AesCrypt = function () {
         AESBlockSize: 16,
     };
 
+    var fileReader = function(file) {
+        let _i = 0;
+        let _fileSize = file.size;
+        let _reader = new FileReader();
+        let _file = file;
+
+        function readChunk(length) {
+            return new Promise((resolve, reject) => {
+                let blob = _file.slice(_i, _i += length);
+
+                _reader.onload = () => {
+                    // return Uint8Array
+                    resolve(new Uint8Array(_reader.result));
+                };
+
+                _reader.onerror = reject;
+
+                _reader.readAsArrayBuffer(blob);
+            });
+        }
+
+        async function readBytes(length) {
+            return await readChunk(length);
+        }
+
+        async function readByte() {
+            let bytes = await readBytes(1);
+            return bytes[0];
+        }
+
+        async function readBytesAsString(length) {
+            let bytes = await readBytes(length);
+            return Utilities.bytes_to_latin1(bytes);
+        }
+
+        async function readBytesAsInt(length) {
+            let bytes = await readBytes(length);
+            return Utilities.arrToInt(bytes);
+        }
+
+        function getCurrentPosition() {
+            return _i;
+        }
+
+        function getLength() {
+            return _fileSize;
+        }
+
+        return {
+            readByte: readByte,
+            readBytes: readBytes,
+            readBytesAsInt: readBytesAsInt,
+            readBytesAsString: readBytesAsString,
+            getCurrentPosition: getCurrentPosition,
+            getLength: getLength,
+        };
+    };
+
+    var Utilities = {
+
+        random_int: function(min, max) {
+            return Math.floor(Math.random() * (max - min) + min);
+        },
+
+        urandom: function(length) {
+            let out = "";
+            for (let i = 0; i < length; i ++) {
+                out += String.fromCharCode(this.random_int(0, 256))
+            }
+            return out;
+        },
+
+        fillArray: function(value, len) {
+            let arr = [];
+            for (let i = 0; i < len; i ++) {
+                arr.push(value);
+            }
+            return arr;
+        },
+
+        arrToInt: function (arr) { // buffer is an UInt8Array
+            return parseInt(Array.prototype.map.call(arr, x => ('00' + x.toString(16)).slice(-2)).join(''), 16);
+        },
+
+        // bytes is typed array
+        bytes_to_latin1: function(bytes) {
+            return CryptoJS.enc.Latin1.stringify(CryptoJS.enc.Uint8Arr.parse(bytes))
+        },
+
+        encode_to_words: function (input, enc = "Latin1") {
+            return CryptoJS.enc[enc].parse(input);
+        },
+
+    }
     function createEncryptor(key, iv) {
         return CryptoJS.algo.AES.createEncryptor(Utilities.encode_to_words(key), {
             mode: CryptoJS.mode.CBC,
@@ -38,7 +132,7 @@ AesCrypt = function () {
         let digest = Utilities.encode_to_words(iv1 + ("\x00".repeat(16)));
 
         for (let i = 0; i < 8192; i ++) {
-            const passHash = CryptoJS.algo.SHA256.create();
+            let passHash = CryptoJS.algo.SHA256.create();
             passHash.update(digest);
             passHash.update(Utilities.encode_to_words(passw, "Utf16LE"));
             digest = passHash.finalize();
@@ -48,7 +142,7 @@ AesCrypt = function () {
     }
 
     // see https://www.aescrypt.com/aes_file_format.html
-    function createAesCryptFormat(content, iv1, c_iv_key, hmac0, hmac1, encryptor0) {
+    async function createAesCryptFormat(fileObj, iv1, c_iv_key, hmac0, hmac1, encryptor0) {
         let result = new Uint8Array([]);
 
         // header
@@ -93,11 +187,13 @@ AesCrypt = function () {
         result = result.appendBytes(hmac1.finalize().toString(CryptoJS.enc.Latin1));
 
         let fs16 = String.fromCharCode(0);
-        const blockLength = Math.ceil(content.byteLength / info.bufferSize);
+        let file = new fileReader(fileObj);
 
-        for (let i = 0; i < blockLength; i++) {
+        const blockLength = Math.ceil(file.getLength() / info.bufferSize);
 
-            let fdata = new Uint8Array(content.slice(i * info.bufferSize, (i + 1) * info.bufferSize));
+        while( file.getCurrentPosition() < file.getLength() ) {
+
+            let fdata = await file.readBytes(info.bufferSize);
 
             let bytesRead = fdata.length;
 
@@ -136,7 +232,7 @@ AesCrypt = function () {
         // HMAC-SHA256 of the encrypted file
         result = result.appendBytes(hmac0.finalize().toString(CryptoJS.enc.Latin1));
 
-        return result;
+        return await result;
     }
 
     /**
@@ -154,17 +250,17 @@ AesCrypt = function () {
      * @param passw string password to decrypt
      */
 
-    function decrypt(content, passw) {
+    async function decrypt(fileObj, passw) {
         if( passw.length > info.maxPassLen ) {
             console.warn("Password is too long.");
             return false;
         }
 
         // file bytes reader
-        const file = Utilities.fileReader(new Uint8Array(content));
+        let file = fileReader(fileObj);
 
         // check if file is in AES Crypt format (also min length check)
-        if( file.readBytesAsString(3) !== "AES" || file.getLength() < 136 ) {
+        if( await file.readBytesAsString(3) !== "AES" || file.getLength() < 136 ) {
             console.warn(
                 "File is corrupted or not an AES Crypt \n" +
                         "(or jsAesCrypt) file.");
@@ -173,7 +269,7 @@ AesCrypt = function () {
 
         // check if file is in AES Crypt format, version 2
         // (the only one compatible with jsAesCrypt)
-        if( file.readByte() !== info.fileFormatVersion ) {
+        if( await file.readByte() !== info.fileFormatVersion ) {
             console.warn(
                 "jsAesCrypt is only compatible with version \n" +
                         "2 of the AES Crypt file format.");
@@ -181,11 +277,11 @@ AesCrypt = function () {
         }
 
         // skip reserved byte
-        file.readByte()
+        await file.readByte()
 
         // skip all the extensions
         while(true) {
-            let fdata = file.readBytes(2);
+            let fdata = await file.readBytes(2);
 
             if( fdata.length < 2 ) {
                 console.warn("File is corrupted.");
@@ -198,36 +294,36 @@ AesCrypt = function () {
                 break;
             }
 
-            file.readBytes(
+            await file.readBytes(
                 fdata
             );
         }
 
         // read external iv
-        const iv1 = file.readBytesAsString(16);
+        let iv1 = await file.readBytesAsString(16);
         if( iv1.length !== 16 ) {
             console.warn("File is corrupted.");
             return false;
         }
 
         // stretch password and iv
-        const key = stretch(passw, iv1);
+        let key = stretch(passw, iv1);
 
         // read encrypted main iv and key
-        const c_iv_key = file.readBytesAsString(48);
+        let c_iv_key = await file.readBytesAsString(48);
         if( c_iv_key.length !== 48 ) {
             console.warn("File is corrupted.");
             return false;
         }
 
         // read HMAC-SHA256 of the encrypted iv and key
-        const hmac1 = file.readBytesAsString(32);
+        let hmac1 = await file.readBytesAsString(32);
         if( hmac1.length !== 32 ) {
             console.warn("File is corrupted.");
             return false;
         }
 
-        const hmac1Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(key));
+        let hmac1Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(key));
         hmac1Act.update(
             Utilities.encode_to_words(c_iv_key)
         );
@@ -239,20 +335,20 @@ AesCrypt = function () {
         }
 
         // instantiate AES cipher
-        const decryptor1 = createDecryptor(key, iv1);
+        let decryptor1 = createDecryptor(key, iv1);
 
         // decrypt main iv and key
-        const iv_key = decryptor1.process(Utilities.encode_to_words(c_iv_key)).toString(CryptoJS.enc.Latin1) + decryptor1.finalize().toString(CryptoJS.enc.Latin1);
+        let iv_key = decryptor1.process(Utilities.encode_to_words(c_iv_key)).toString(CryptoJS.enc.Latin1) + decryptor1.finalize().toString(CryptoJS.enc.Latin1);
 
         // get internal iv and key
-        const iv0 = iv_key.substr(0, info.AESBlockSize);
-        const intKey = iv_key.substr(info.AESBlockSize, 32);
+        let iv0 = iv_key.substr(0, info.AESBlockSize);
+        let intKey = iv_key.substr(info.AESBlockSize, 32);
 
         // instantiate another AES cipher
-        const decryptor0 = createDecryptor(intKey, iv0);
+        let decryptor0 = createDecryptor(intKey, iv0);
 
         // instantiate actual HMAC-SHA256 of the ciphertext
-        const hmac0Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(intKey));
+        let hmac0Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(intKey));
 
         let result = new Uint8Array([]);
 
@@ -260,7 +356,7 @@ AesCrypt = function () {
         while( file.getCurrentPosition() < file.getLength() - 32 - 1 - info.AESBlockSize ) {
             // read data
             let cText = Utilities.encode_to_words(
-                file.readBytes(
+                await file.readBytes(
                     Math.min(
                         info.bufferSize,
                         file.getLength() - file.getCurrentPosition() - 32 - 1 - info.AESBlockSize,
@@ -281,7 +377,7 @@ AesCrypt = function () {
         // read last block
         if( file.getCurrentPosition() !== file.getLength() - 32 - 1 ) {
             // read typed array
-            cText = file.readBytes(info.AESBlockSize);
+            cText = await file.readBytes(info.AESBlockSize);
 
             if( cText.length < info.AESBlockSize ) {
                 console.warn("File is corrupted.");
@@ -297,19 +393,19 @@ AesCrypt = function () {
         // update HMAC
         hmac0Act.update(cText);
 
-        const fs16 = file.readBytesAsInt(1);
+        let fs16 = await file.readBytesAsInt(1);
 
         let pText = decryptor0.process(cText).toString(CryptoJS.enc.Latin1) + decryptor0.finalize().toString(CryptoJS.enc.Latin1);
 
         // remove padding
-        const toremove = ((16 - fs16) % 16);
+        let toremove = ((16 - fs16) % 16);
         if( toremove !== 0 ) {
             pText = pText.substr(0, pText.length - toremove);
         }
 
         result = result.appendBytes(pText);
 
-        const hmac0 = file.readBytesAsString(32);
+        let hmac0 = await file.readBytesAsString(32);
 
         if( hmac0.length !== 32 ) {
             console.warn("File is corrupted.");
@@ -335,11 +431,11 @@ AesCrypt = function () {
      * @example
      *     var encrypted = encrypt(typedArray, Password);
      *
-     * @param content typed array
+     * @param fileObj file object
      * @param passw string password to encrypt
      */
 
-    function encrypt(content, passw) {
+    async function encrypt(fileObj, passw) {
         if( passw.length > info.maxPassLen ) {
             console.warn("Password is too long.");
             return false;
@@ -372,14 +468,14 @@ AesCrypt = function () {
         const hmac1 = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(key));
         hmac1.update(Utilities.encode_to_words(c_iv_key));
 
-        return createAesCryptFormat(content, iv1, c_iv_key, hmac0, hmac1, encryptor0);
+        return await createAesCryptFormat(fileObj, iv1, c_iv_key, hmac0, hmac1, encryptor0);
     }
 
     Uint8Array.prototype.appendBytes = function (input) {
         let tmp;
 
         if (typeof (input) == "number") {
-            const hex_string = input.toString(16);
+            let hex_string = input.toString(16);
             tmp = new Uint8Array(hex_string.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
         } else if (typeof (input) == "string") {
             tmp = new Uint8Array(input.length);
@@ -390,7 +486,7 @@ AesCrypt = function () {
             tmp = new Uint8Array(input);
         }
 
-        const new_uint8_arr = new Uint8Array(this.length + tmp.length);
+        let new_uint8_arr = new Uint8Array(this.length + tmp.length);
 
         new_uint8_arr.set(this);
         new_uint8_arr.set(tmp, this.length);
@@ -405,24 +501,7 @@ AesCrypt = function () {
     return {
         encrypt: encrypt,
         decrypt: decrypt,
-        createEncryptor: createEncryptor,
         getInfo: getInfo
     }
 
 }
-
-const saveByteArray = (function () {
-    return function (data, name) {
-        const a = document.createElement("a");
-        document.body.appendChild(a);
-        a.style = "display: none";
-
-        const blob = new Blob([data], {type: "octet/stream"}),
-            url = window.URL.createObjectURL(blob);
-        a.href = url;
-        a.download = name;
-        a.click();
-        window.URL.revokeObjectURL(url);
-        a.remove();
-    };
-}());

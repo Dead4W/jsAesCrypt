@@ -1,15 +1,14 @@
 <!DOCTYPE html>
 <head>
 	<title></title>
-	<script src="libs/core.min.js"></script>
-	<script src="libs/cipher-core.min.js"></script>
-	<script src="libs/aes.min.js"></script>
-	<script src="libs/hmac.min.js"></script>
-	<script src="libs/sha256.min.js"></script>
-	<script src="libs/pad-nopadding.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/core.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/cipher-core.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/aes.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/hmac.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/sha256.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/pad-nopadding.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/enc-utf16.min.js"></script>
 	<script src="libs/enc-uint8array.min.js"></script>
-	<script src="libs/enc-utf16.min.js"></script>
-	<script src="libs/utilities.min.js"></script>
 	<script src="libs/aes_crypt.min.js"></script>
 	<style>
 		.app {
@@ -36,53 +35,59 @@
 	<div class="app">
 		<img class="logo" src="aescrypt_header.png" alt="aesCrypt logo">
 		<h1>
-			jsAesCrypt Demo
+			jsAesCrypt Demo Async
 		</h1>
 
 		Password
-		<input type="text" id="password" placeholder="Password">
+		<input type="text" id="password" placeholder="Password" value="TEST">
 		<br>
 		File
 		<input type="file" id="file">
 		<br>
 		<br>
-		<button onclick="readFile('file', encryptFile);return false;">Encrypt File</button>
+		<button onclick="encryptFile('file');return false;">Encrypt File</button>
 		<br>
-		<button onclick="readFile('file', decryptFile);return false;">Decrypt File</button>
+		<button onclick="decryptFile('file');return false;">Decrypt File</button>
 	</div>
 	<script type="text/javascript">
 
-		window.startTime = 0;
-		const aes = AesCrypt();
+		let saveByteArray = (function () {
+		    return function (data, name) {
+		        let a = document.createElement("a");
+		        document.body.appendChild(a);
+		        a.style = "display: none";
 
-		function readFile(inputFileId, callback) {
-			const file = document.getElementById(inputFileId).files[0];
-			const file_name = document.getElementById(inputFileId).value;
-			if (file) {
-				const reader = new FileReader();
-				reader.readAsArrayBuffer(file);
+		        let blob = new Blob([data], {type: "octet/stream"}),
+		            url = window.URL.createObjectURL(blob);
+		        a.href = url;
+		        a.download = name;
+		        a.click();
+		        window.URL.revokeObjectURL(url);
+		        a.remove();
+		    };
+		}());
 
-				const aes = AesCrypt();
+		let aes = AesCrypt();
 
-				reader.onload = function(evt) {
-					callback(reader.result, file_name.split(/([\\/])/g).pop());
-				};
-				reader.onerror = function (evt) {
-					alert("ERROR")
-				}
-			}
+		function encryptFile(inputFileId) {
+			let file = document.getElementById(inputFileId).files[0];
+			let file_name = document.getElementById(inputFileId).value.split(/([\\/])/g).pop();
+
+			let passw = document.getElementById("password").value;
+			aes.encrypt(file, passw).then((r) => {
+				saveByteArray(r, file_name + ".aes");
+			});
 		}
 
-		function encryptFile(result, file_name) {
-			const passw = document.getElementById("password").value;
-			const file = aes.encrypt(result, passw);
-			saveByteArray(file, file_name + ".aes");
-		}
+		function decryptFile(inputFileId) {
+			let file = document.getElementById(inputFileId).files[0];
+			let file_name = document.getElementById(inputFileId).value.split(/([\\/])/g).pop();
 
-		function decryptFile(result, file_name) {
-			const passw = document.getElementById("password").value;
-			const file = aes.decrypt(result, passw);
-			saveByteArray(file, file_name.split('.').slice(0, -1).join('.'));
+			let passw = document.getElementById("password").value;
+			aes.decrypt(file, passw).then((r) => {
+				saveByteArray(r, file_name.split('.').slice(0, -1).join('.'));
+			});
+
 		}
 
 	</script>
