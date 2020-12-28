@@ -40,24 +40,32 @@ const aes = AesCrypt();
 var password = "foopassword"
 var text = "secret_secret_secret_secret"
 
-// encode text to word list
-var text_word = Utilities.encode_to_words(text);
-
 // encryption/decryption
 
-// encode text to Uint8Array
-var enc = new TextEncoder(); 
+// encodeder text to Uint8Array
+var enc = new TextEncoder();
+
+// enc.encode(text) === text_words
+var text_words = aes.utils.encode_to_words(text);
 
 // encrypt typed array (Uint8Array)
-var encrypted1 = aes.encrypt(enc.encode(text), password);
+aes.encrypt(enc.encode(text), password).then((encrypted) => {
 
-var encrypted2 = aes.encrypt(text_word, password);
+  // decrypt typed array (Uint8Array)
+  aes.decrypt(encrypted, password).then((r) => {
+
+    // transform Uint8Array to Latin1 string
+    let result = aes.utils.bytes_to_latin1(decrypted);
+    
+    console.log(result);
+  });
+});
 
 // decrypt typed array (Uint8Array)
 var decrypted = aes.decrypt(encrypted, password);
 
 // transform Uint8Array to Latin1 string
-var result = Utilities.bytes_to_latin1(decrypted);
+var result = aes.utils.bytes_to_latin1(decrypted);
 ```
 
 **This is the most straightforward way to use jsAesCrypt, and should be preferred.**

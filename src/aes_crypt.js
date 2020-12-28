@@ -49,12 +49,12 @@ AesCrypt = function () {
 
         async function readBytesAsString(length) {
             let bytes = await readBytes(length);
-            return Utilities.bytes_to_latin1(bytes);
+            return utils.bytes_to_latin1(bytes);
         }
 
         async function readBytesAsInt(length) {
             let bytes = await readBytes(length);
-            return Utilities.arrToInt(bytes);
+            return utils.arrToInt(bytes);
         }
 
         function getCurrentPosition() {
@@ -75,7 +75,7 @@ AesCrypt = function () {
         };
     };
 
-    var Utilities = {
+    var utils = {
 
         random_int: function(min, max) {
             return Math.floor(Math.random() * (max - min) + min);
@@ -112,7 +112,7 @@ AesCrypt = function () {
 
     }
     function createEncryptor(key, iv) {
-        return CryptoJS.algo.AES.createEncryptor(Utilities.encode_to_words(key), {
+        return CryptoJS.algo.AES.createEncryptor(utils.encode_to_words(key), {
             mode: CryptoJS.mode.CBC,
             iv: CryptoJS.enc.Latin1.parse(iv),
             padding: CryptoJS.pad.NoPadding,
@@ -120,7 +120,7 @@ AesCrypt = function () {
     }
 
     function createDecryptor(key, iv) {
-        return CryptoJS.algo.AES.createDecryptor(Utilities.encode_to_words(key), {
+        return CryptoJS.algo.AES.createDecryptor(utils.encode_to_words(key), {
             mode: CryptoJS.mode.CBC,
             iv: CryptoJS.enc.Latin1.parse(iv),
             padding: CryptoJS.pad.NoPadding,
@@ -129,12 +129,12 @@ AesCrypt = function () {
 
     function stretch(passw, iv1) {
         // hash the external iv and the password 8192 times
-        let digest = Utilities.encode_to_words(iv1 + ("\x00".repeat(16)));
+        let digest = utils.encode_to_words(iv1 + ("\x00".repeat(16)));
 
         for (let i = 0; i < 8192; i ++) {
             let passHash = CryptoJS.algo.SHA256.create();
             passHash.update(digest);
-            passHash.update(Utilities.encode_to_words(passw, "Utf16LE"));
+            passHash.update(utils.encode_to_words(passw, "Utf16LE"));
             digest = passHash.finalize();
         }
 
@@ -171,7 +171,7 @@ AesCrypt = function () {
         result = result.appendBytes([0x0, 0x80]);
 
         // "container" extension
-        result = result.appendBytes(Utilities.fillArray(0x0, 128));
+        result = result.appendBytes(utils.fillArray(0x0, 128));
 
         // end-of-extensions tag
         result = result.appendBytes([0x0, 0x0]);
@@ -197,7 +197,7 @@ AesCrypt = function () {
 
             let bytesRead = fdata.length;
 
-            let cText = encryptor0.process(Utilities.encode_to_words(fdata, "Uint8Arr")).toString(CryptoJS.enc.Latin1);
+            let cText = encryptor0.process(utils.encode_to_words(fdata, "Uint8Arr")).toString(CryptoJS.enc.Latin1);
 
             // check if EOF was reached
             if (bytesRead < info.bufferSize) {
@@ -216,12 +216,12 @@ AesCrypt = function () {
                 let padByte = fs16.repeat(padLen);
 
                 // encrypt data
-                cText += encryptor0.process(Utilities.encode_to_words(padByte)).toString(CryptoJS.enc.Latin1)
+                cText += encryptor0.process(utils.encode_to_words(padByte)).toString(CryptoJS.enc.Latin1)
             }
 
             cText += encryptor0.finalize().toString(CryptoJS.enc.Latin1);
 
-            hmac0.update(Utilities.encode_to_words(cText));
+            hmac0.update(utils.encode_to_words(cText));
 
             result = result.appendBytes(cText);
 
@@ -288,7 +288,7 @@ AesCrypt = function () {
                 return false;
             }
 
-            fdata = +Utilities.arrToInt(fdata);
+            fdata = +utils.arrToInt(fdata);
 
             if( fdata === 0 ) {
                 break;
@@ -323,9 +323,9 @@ AesCrypt = function () {
             return false;
         }
 
-        let hmac1Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(key));
+        let hmac1Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, utils.encode_to_words(key));
         hmac1Act.update(
-            Utilities.encode_to_words(c_iv_key)
+            utils.encode_to_words(c_iv_key)
         );
 
         // HMAC check
@@ -338,7 +338,7 @@ AesCrypt = function () {
         let decryptor1 = createDecryptor(key, iv1);
 
         // decrypt main iv and key
-        let iv_key = decryptor1.process(Utilities.encode_to_words(c_iv_key)).toString(CryptoJS.enc.Latin1) + decryptor1.finalize().toString(CryptoJS.enc.Latin1);
+        let iv_key = decryptor1.process(utils.encode_to_words(c_iv_key)).toString(CryptoJS.enc.Latin1) + decryptor1.finalize().toString(CryptoJS.enc.Latin1);
 
         // get internal iv and key
         let iv0 = iv_key.substr(0, info.AESBlockSize);
@@ -348,14 +348,14 @@ AesCrypt = function () {
         let decryptor0 = createDecryptor(intKey, iv0);
 
         // instantiate actual HMAC-SHA256 of the ciphertext
-        let hmac0Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(intKey));
+        let hmac0Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, utils.encode_to_words(intKey));
 
         let result = new Uint8Array([]);
 
         // decrypt blocks
         while( file.getCurrentPosition() < file.getLength() - 32 - 1 - info.AESBlockSize ) {
             // read data
-            let cText = Utilities.encode_to_words(
+            let cText = utils.encode_to_words(
                 await file.readBytes(
                     Math.min(
                         info.bufferSize,
@@ -388,7 +388,7 @@ AesCrypt = function () {
         }
 
         // encode to words for CryptoJS
-        cText = Utilities.encode_to_words(cText, "Uint8Arr");
+        cText = utils.encode_to_words(cText, "Uint8Arr");
 
         // update HMAC
         hmac0Act.update(cText);
@@ -442,31 +442,31 @@ AesCrypt = function () {
         }
 
         // encryption key
-        const iv1 = Utilities.urandom(info.AESBlockSize);
+        const iv1 = utils.urandom(info.AESBlockSize);
 
         // stretch password and iv
         const key = stretch(passw, iv1);
 
         // generate random main iv
-        const iv0 = Utilities.urandom(info.AESBlockSize);
+        const iv0 = utils.urandom(info.AESBlockSize);
 
         // generate random internal key
-        const intKey = Utilities.urandom(32);
+        const intKey = utils.urandom(32);
 
         const encryptor0 = createEncryptor(intKey, iv0);
 
         // instantiate HMAC-SHA256 for the ciphertext
-        const hmac0 = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(intKey));
+        const hmac0 = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, utils.encode_to_words(intKey));
 
         // instantiate another AES cipher
         const encryptor1 = createEncryptor(key, iv1);
 
         // encrypt main iv and key
-        const c_iv_key = encryptor1.process(Utilities.encode_to_words(iv0 + intKey)).toString(CryptoJS.enc.Latin1) + encryptor1.finalize().toString(CryptoJS.enc.Latin1);
+        const c_iv_key = encryptor1.process(utils.encode_to_words(iv0 + intKey)).toString(CryptoJS.enc.Latin1) + encryptor1.finalize().toString(CryptoJS.enc.Latin1);
 
         //# calculate HMAC-SHA256 of the encrypted iv and key
-        const hmac1 = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, Utilities.encode_to_words(key));
-        hmac1.update(Utilities.encode_to_words(c_iv_key));
+        const hmac1 = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, utils.encode_to_words(key));
+        hmac1.update(utils.encode_to_words(c_iv_key));
 
         return await createAesCryptFormat(fileObj, iv1, c_iv_key, hmac0, hmac1, encryptor0);
     }
@@ -501,6 +501,7 @@ AesCrypt = function () {
     return {
         encrypt: encrypt,
         decrypt: decrypt,
+        utils: utils,
         getInfo: getInfo
     }
 
