@@ -1,6 +1,6 @@
 jsAesCrypt
 
-[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/badges/quality-score.png?b=async)](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/badges/quality-score.png?b=async&r=1)](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/)
 
 ------------------------
 jsAesCrypt is a Javascript file-encryption library and script that uses AES256-CBC to encrypt/decrypt files and binary streams.
