@@ -32,7 +32,7 @@ window.Utilities = {
         let _content = content;
 
         function readBytes(len) {
-            let block = content.slice(_i, _i+len);
+            let block = _content.slice(_i, _i+len);
             _i += len;
             return block;
         }
