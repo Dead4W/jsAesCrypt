@@ -110,6 +110,43 @@ AesCrypt = function () {
         },
 
     }
+
+    let binaryArray = function() {
+        let _data = new Uint8Array([]);
+
+        function appendBytes(input) {
+            let tmp;
+
+            if (typeof (input) == "number") {
+                let hex_string = input.toString(16);
+                tmp = new Uint8Array(hex_string.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+            } else if (typeof (input) == "string") {
+                tmp = new Uint8Array(input.length);
+                for (let i = 0; i < input.length; i ++) {
+                    tmp[i] = input.charCodeAt(i);
+                }
+            } else {
+                tmp = new Uint8Array(input);
+            }
+
+            let new_uint8_arr = new Uint8Array(_data.length + tmp.length);
+
+            new_uint8_arr.set(_data);
+            new_uint8_arr.set(tmp, _data.length);
+
+            _data = new_uint8_arr;
+        };
+
+        function finalize() {
+            return _data;
+        };
+
+        return {
+            appendBytes: appendBytes,
+            finalize: finalize,
+        }
+    }
+
     function createEncryptor(key, iv) {
         return CryptoJS.algo.AES.createEncryptor(utils.encode_to_words(key), {
             mode: CryptoJS.mode.CBC,
@@ -142,48 +179,48 @@ AesCrypt = function () {
 
     // see https://www.aescrypt.com/aes_file_format.html
     async function createAesCryptFormat(fileObj, iv1, c_iv_key, hmac0, hmac1, encryptor0, callback_progress) {
-        let result = new Uint8Array([]);
+        let result = binaryArray();
 
         // header
-        result = result.appendBytes("AES");
+        result.appendBytes("AES");
 
         // version (AES Crypt version 2 file format -
         // see https://www.aescrypt.com/aes_file_format.html)
-        result = result.appendBytes(info.fileFormatVersion);
+        result.appendBytes(info.fileFormatVersion);
 
         // reserved byte (set to zero)
-        result = result.appendBytes(0x0);
+        result.appendBytes(0x0);
 
         // setup "CREATED-BY" extension
         const cby = "jsAesCrypt " + info.version;
 
         // "CREATED-BY" extension length
-        result = result.appendBytes(0x0);
-        result = result.appendBytes(1 + ("CREATED_BY" + cby).length);
+        result.appendBytes(0x0);
+        result.appendBytes(1 + ("CREATED_BY" + cby).length);
 
         // "CREATED-BY" extension
-        result = result.appendBytes("CREATED_BY");
-        result = result.appendBytes(0x0);
-        result = result.appendBytes(cby);
+        result.appendBytes("CREATED_BY");
+        result.appendBytes(0x0);
+        result.appendBytes(cby);
 
         // "container" extension length
-        result = result.appendBytes([0x0, 0x80]);
+        result.appendBytes([0x0, 0x80]);
 
         // "container" extension
-        result = result.appendBytes(utils.fillArray(0x0, 128));
+        result.appendBytes(utils.fillArray(0x0, 128));
 
         // end-of-extensions tag
-        result = result.appendBytes([0x0, 0x0]);
+        result.appendBytes([0x0, 0x0]);
 
         // the iv used to encrypt the main iv and the
         // encryption key
-        result = result.appendBytes(iv1);
+        result.appendBytes(iv1);
 
         // encrypted main iv and key
-        result = result.appendBytes(c_iv_key);
+        result.appendBytes(c_iv_key);
 
         // HMAC-SHA256 of the encrypted iv and key
-        result = result.appendBytes(hmac1.finalize().toString(CryptoJS.enc.Latin1));
+        result.appendBytes(hmac1.finalize().toString(CryptoJS.enc.Latin1));
 
         let fs16 = String.fromCharCode(0);
         let file = new fileReader(fileObj);
@@ -225,17 +262,17 @@ AesCrypt = function () {
 
             hmac0.update(utils.encode_to_words(cText));
 
-            result = result.appendBytes(cText);
+            result.appendBytes(cText);
             
             callback_progress(++counter / total);
         }
 
-        result = result.appendBytes(fs16);
+        result.appendBytes(fs16);
 
         // HMAC-SHA256 of the encrypted file
-        result = result.appendBytes(hmac0.finalize().toString(CryptoJS.enc.Latin1));
+        result.appendBytes(hmac0.finalize().toString(CryptoJS.enc.Latin1));
 
-        return await result;
+        return await result.finalize();
     }
 
     /**
@@ -354,7 +391,7 @@ AesCrypt = function () {
         // instantiate actual HMAC-SHA256 of the ciphertext
         let hmac0Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, utils.encode_to_words(intKey));
 
-        let result = new Uint8Array([]);
+        let result = binaryArray();
         let total = Math.ceil( (file.getLength() - file.getCurrentPosition() - 32 - 1 - info.AESBlockSize) / info.bufferSize ) + 1;
         let counter = 0;
 
@@ -374,7 +411,7 @@ AesCrypt = function () {
             // update HMAC
             hmac0Act.update(cText)
             // decrypt data and write it to output file
-            result = result.appendBytes(decryptor0.process(cText).toString(CryptoJS.enc.Latin1));
+            result.appendBytes(decryptor0.process(cText).toString(CryptoJS.enc.Latin1));
             callback_progress(++counter / total);
         }
 
@@ -410,7 +447,7 @@ AesCrypt = function () {
             pText = pText.substr(0, pText.length - toremove);
         }
 
-        result = result.appendBytes(pText);
+        result.appendBytes(pText);
 
         let hmac0 = await file.readBytesAsString(32);
 
@@ -426,7 +463,7 @@ AesCrypt = function () {
 
         callback_progress(1);
 
-        return result;
+        return result.finalize();
     }
 
     /**
