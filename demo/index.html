@@ -1,15 +1,14 @@
 <!DOCTYPE html>
 <head>
 	<title></title>
-	<script src="libs/core.min.js"></script>
-	<script src="libs/cipher-core.min.js"></script>
-	<script src="libs/aes.min.js"></script>
-	<script src="libs/hmac.min.js"></script>
-	<script src="libs/sha256.min.js"></script>
-	<script src="libs/pad-nopadding.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/core.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/cipher-core.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/aes.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/hmac.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/sha256.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/pad-nopadding.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/enc-utf16.min.js"></script>
 	<script src="libs/enc-uint8array.min.js"></script>
-	<script src="libs/enc-utf16.min.js"></script>
-	<script src="libs/utilities.min.js"></script>
 	<script src="libs/aes_crypt.min.js"></script>
 	<style>
 		.app {
@@ -36,53 +35,127 @@
 	<div class="app">
 		<img class="logo" src="aescrypt_header.png" alt="aesCrypt logo">
 		<h1>
-			jsAesCrypt Demo
+			jsAesCrypt Demo Async
 		</h1>
 
 		Password
-		<input type="text" id="password" placeholder="Password">
+		<input type="text" id="password" placeholder="Password" value="TEST">
 		<br>
 		File
 		<input type="file" id="file">
 		<br>
 		<br>
-		<button onclick="readFile('file', encryptFile);return false;">Encrypt File</button>
+		<button onclick="initButton('file');encryptFile();return false;">Encrypt File</button>
 		<br>
-		<button onclick="readFile('file', decryptFile);return false;">Decrypt File</button>
+		<button onclick="initButton('file');decryptFile();return false;">Decrypt File</button>
+		<br>
+		<br>
+		<br>
+		<button onclick="initButton('file');encryptFileWorker();return false;">Encrypt File WORKER</button>
+		<br>
+		<button onclick="initButton('file');decryptFileWorker();return false;">Decrypt File WORKER</button>
+		<br>
+		<progress id="progress" value="0" max="100">
+		Worker progress bar
+		</progress>
+		<br>
+		<span id="time_left_title">Осталось: </span><span id="time_left"></span>
 	</div>
 	<script type="text/javascript">
 
-		window.startTime = 0;
-		const aes = AesCrypt();
+		var myWorker = null;
+		var start = null;
 
-		function readFile(inputFileId, callback) {
-			const file = document.getElementById(inputFileId).files[0];
-			const file_name = document.getElementById(inputFileId).value;
-			if (file) {
-				const reader = new FileReader();
-				reader.readAsArrayBuffer(file);
+		var file;
+		var file_name;
+		var passw;
 
-				const aes = AesCrypt();
+		function declOfNum(number, titles) {  
+			cases = [2, 0, 1, 1, 1, 2];  
+			return titles[ (number%100>4 && number%100<20)? 2 : cases[(number%10<5)?number%10:5] ];  
+		}
 
-				reader.onload = function(evt) {
-					callback(reader.result, file_name.split(/([\\/])/g).pop());
-				};
-				reader.onerror = function (evt) {
-					alert("ERROR")
+		function initButton(inputFileId) {
+			start = +(new Date());
+
+			file = document.getElementById(inputFileId).files[0];
+			file_name = document.getElementById(inputFileId).value.split(/([\\/])/g).pop();
+			passw = document.getElementById("password").value;
+		}
+
+		function restartWorker() {
+			if( myWorker !== null ) myWorker.terminate();
+
+			time_left.style.display = "none";
+			time_left_title.style.display = "none";
+
+			myWorker = new Worker("worker.js");
+
+			myWorker.onmessage = function(e) {
+
+				let data = e.data;
+				let action = data[0];
+
+				if( action === "ENCRYPT" || action === "DECRYPT" ) {
+					restartWorker();
+
+					saveByteArray(data[1], data[2]);
+				} else if( action === "PROGRESS" ) {
+					time_left.style.display = "unset";
+					time_left_title.style.display = "unset";
+					let runtime = +(new Date()) - start;
+					let left = Math.ceil((100 - +data[1]) * (runtime / +data[1]) / 1000);
+
+					progress.value = +data[1];
+					time_left_title.innerText = "Осталось: ";
+					time_left.innerText = left + " " + declOfNum(left, ['секунда', 'секунды', 'секунд']);
 				}
 			}
 		}
 
-		function encryptFile(result, file_name) {
-			const passw = document.getElementById("password").value;
-			const file = aes.encrypt(result, passw);
-			saveByteArray(file, file_name + ".aes");
+		var progress = document.getElementById("progress");
+		var time_left_title = document.getElementById("time_left_title");
+		var time_left = document.getElementById("time_left");
+
+		restartWorker();
+
+		let saveByteArray = (function () {
+		    return function (data, name) {
+		        let a = document.createElement("a");
+		        document.body.appendChild(a);
+		        a.style = "display: none";
+
+		        let blob = new Blob([data], {type: "octet/stream"}),
+		            url = window.URL.createObjectURL(blob);
+		        a.href = url;
+		        a.download = name;
+		        a.click();
+		        window.URL.revokeObjectURL(url);
+		        a.remove();
+		    };
+		}());
+
+		let aes = AesCrypt();
+
+		function encryptFileWorker() {
+			myWorker.postMessage(["ENCRYPT", file, passw, file_name]);
 		}
 
-		function decryptFile(result, file_name) {
-			const passw = document.getElementById("password").value;
-			const file = aes.decrypt(result, passw);
-			saveByteArray(file, file_name.split('.').slice(0, -1).join('.'));
+		function decryptFileWorker() {
+			myWorker.postMessage(["DECRYPT", file, passw, file_name]);
+		}
+
+		function encryptFile() {
+			aes.encrypt(file, passw).then((r) => {
+				saveByteArray(r, file_name + ".aes");
+			});
+		}
+
+		function decryptFile() {
+			aes.decrypt(file, passw).then((r) => {
+				saveByteArray(r, file_name.split('.').slice(0, -1).join('.'));
+			});
+
 		}
 
 	</script>

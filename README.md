@@ -1,6 +1,6 @@
 jsAesCrypt
 
-[![Scrutinizer Code Quality](https://img.shields.io/scrutinizer/g/Dead4W/jsAesCrypt.svg?style=flat)](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/badges/quality-score.png?b=async&r=1)](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/?branch=async)
 
 ------------------------
 jsAesCrypt is a Javascript file-encryption library and script that uses AES256-CBC to encrypt/decrypt files and binary files.
@@ -37,27 +37,30 @@ Here is an example showing encryption and decryption of a file:
 // Init aesCrypt library
 const aes = AesCrypt();
 
-var password = "foopassword"
-var text = "secret_secret_secret_secret"
+let fileSecret = document.getElementById("fileSecret").files[0];
 
-// encode text to word list
-var text_word = Utilities.encode_to_words(text);
+var password = "foopassword"
 
 // encryption/decryption
 
-// encode text to Uint8Array
-var enc = new TextEncoder(); 
+// **IMPORTANT** Only for workers!
+let progress_callback = (current) => {let percent = current * 100;};
 
 // encrypt typed array (Uint8Array)
-var encrypted1 = aes.encrypt(enc.encode(text), password);
+aes.encrypt(fileSecret, password, progress_callback).then((encrypted) => {
+  console.log(encrypted);
+});
 
-var encrypted2 = aes.encrypt(text_word, password);
+let fileEncrypted = document.getElementById("fileEncrypted").files[0];
 
 // decrypt typed array (Uint8Array)
-var decrypted = aes.decrypt(encrypted, password);
+aes.decrypt(fileEncrypted, password, progress_callback).then((decrypted) => {
 
-// transform Uint8Array to Latin1 string
-var result = Utilities.bytes_to_latin1(decrypted);
+  // transform Uint8Array to Latin1 string
+  let secret = aes.utils.bytes_to_latin1(decrypted);
+  
+  console.log(secret);
+});
 ```
 
 **This is the most straightforward way to use jsAesCrypt, and should be preferred.**
