@@ -148,6 +148,7 @@ AesCrypt = function () {
         if( fs16 == 0 ) {
             let modBlock = new Uint8Array(info.AESBlockSize);
 
+            // xor padding with last block (see mode AES-CBC)
             for( let i = 0; i < info.AESBlockSize;i++ ) {
                 modBlock[i] = 0x00 ^ cText.get(file.getLength() - info.AESBlockSize + i);
             }
@@ -505,8 +506,6 @@ AesCrypt = function () {
         let pText = binaryArray( 
             await file.readBytes( file.getLength() )
         );
-
-        console.log(1);
 
         // file size mod 16, lsb positions
         let fs16 = String.fromCharCode(bytesRead % info.AESBlockSize);
