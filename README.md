@@ -21,11 +21,6 @@ Requirements
 
  - CryptoJS (https://cryptojs.gitbook.io/docs/)
     - core.js
-    - cipher-core.js
-    - aes.js
-    - hmac.js
-    - sha256.js
-    - pad-nopadding.js
     - enc-utf16.js
  - enc-uint8array.js (Custom Uint8Array encoding)
 
