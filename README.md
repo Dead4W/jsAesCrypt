@@ -34,25 +34,22 @@ const aes = AesCrypt();
 
 let fileSecret = document.getElementById("fileSecret").files[0];
 
-var password = "foopassword"
+let password = "foopassword"
 
 // encryption/decryption
 
-// **IMPORTANT** Only for workers!
-let progress_callback = (current) => {let percent = current * 100;};
-
 // encrypt typed array (Uint8Array)
-aes.encrypt(fileSecret, password, progress_callback).then((encrypted) => {
+aes.encrypt(fileSecret, password).then((encrypted) => {
   console.log(encrypted);
 });
 
 let fileEncrypted = document.getElementById("fileEncrypted").files[0];
 
 // decrypt typed array (Uint8Array)
-aes.decrypt(fileEncrypted, password, progress_callback).then((decrypted) => {
+aes.decrypt(fileEncrypted, password).then((decrypted) => {
 
   // transform Uint8Array to Latin1 string
-  let secret = aes.utils.bytes_to_latin1(decrypted);
+  let secret = aes.utils.bytes2str(decrypted);
   
   console.log(secret);
 });
