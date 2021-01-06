@@ -30,10 +30,9 @@ AesCrypt = function () {
      *
      * @param fileObj file element object
      * @param passw string password to decrypt
-     * @callback_progress callback function (current) => { 0 < current <= 1 }
      */
 
-    async function decrypt(fileObj, passw, callback_progress = (c) => {}) {
+    async function decrypt(fileObj, passw) {
         if( passw.length > info.maxPassLen ) {
             console.warn("Password is too long.");
             return false;
@@ -172,10 +171,9 @@ AesCrypt = function () {
      *
      * @param fileObj file element object
      * @param passw string password to encrypt
-     * @callback_progress callback function (current) => { 0 < current <= 1 }
      */
 
-    async function encrypt(fileObj, passw, callback_progress = (c) => {}) {
+    async function encrypt(fileObj, passw) {
         if( passw.length > info.maxPassLen ) {
             console.warn("Password is too long.");
             return false;
@@ -202,7 +200,7 @@ AesCrypt = function () {
 
         const hmac1 = await _webHashHMAC(c_iv_key, key);
 
-        return await _createAesCryptFormat(fileObj, iv1, c_iv_key, intKey, hmac1, iv0, callback_progress);
+        return await _createAesCryptFormat(fileObj, iv1, c_iv_key, intKey, hmac1, iv0);
     }
 
     /* PRIVATE START */
@@ -434,7 +432,7 @@ AesCrypt = function () {
     }
 
     // see https://www.aescrypt.com/aes_file_format.html
-    async function _createAesCryptFormat(fileObj, iv1, c_iv_key, intKey, hmac1, iv0, callback_progress) {
+    async function _createAesCryptFormat(fileObj, iv1, c_iv_key, intKey, hmac1, iv0) {
         let result = binaryArray();
 
         // header
