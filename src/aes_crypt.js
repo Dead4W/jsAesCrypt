@@ -1,7 +1,7 @@
 AesCrypt = function () {
     let info = {
         // jsAesCrypt version
-        version: "0.13a",
+        version: "0.15",
 
         // encryption/decryption buffer size - 32K
         bufferSize: 32 * 1024,
@@ -83,17 +83,17 @@ AesCrypt = function () {
         }
 
         // read external iv
-        let iv1 = await file.readBytesAsString(16);
+        let iv1 = await file.readBytes(16);
         if( iv1.length !== 16 ) {
             console.warn("File is corrupted.");
             return false;
         }
 
         // _stretch password and iv
-        let key = _stretch(passw, iv1);
+        let key = await _stretch(passw, iv1);
 
         // read encrypted main iv and key
-        let c_iv_key = await file.readBytesAsString(48);
+        let c_iv_key = await file.readBytes(48);
         if( c_iv_key.length !== 48 ) {
             console.warn("File is corrupted.");
             return false;
@@ -106,29 +106,19 @@ AesCrypt = function () {
             return false;
         }
 
-        let hmac1Act = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, utils.encode_to_words(key));
-        hmac1Act.update(
-            utils.encode_to_words(c_iv_key)
-        );
+        let hmac1Act = await _webHashHMAC(c_iv_key, key);
 
         // HMAC check
-        if( hmac1 !== CryptoJS.enc.Latin1.stringify(hmac1Act.finalize()) ) {
+        if( hmac1 !== utils.bytes2str(hmac1Act) ) {
             console.warn("Wrong password (or file is corrupted).");
             return false;
         }
 
-        // instantiate AES cipher
-        let decryptor1 = _createDecryptor(key, iv1);
-
-        // decrypt main iv and key
-        let iv_key = decryptor1.process(utils.encode_to_words(c_iv_key)).toString(CryptoJS.enc.Latin1) + decryptor1.finalize().toString(CryptoJS.enc.Latin1);
+        let iv_key = await _webDecryptAes(c_iv_key, key, iv1, 0);
 
         // get internal iv and key
-        let iv0 = iv_key.substr(0, info.AESBlockSize);
-        let intKey = iv_key.substr(info.AESBlockSize, 32);
-
-        // instantiate another AES cipher
-        let decryptor0 = _createDecryptor(intKey, iv0);
+        let iv0 = iv_key.slice(0, info.AESBlockSize);
+        let intKey = iv_key.slice(info.AESBlockSize, info.AESBlockSize+32);
 
         let result = binaryArray();
 
@@ -138,31 +128,18 @@ AesCrypt = function () {
 
         let fs16 = await file.readBytesAsInt(1);
 
-        let intKeyArr = utils.str2bytes(intKey);
-        let iv0Arr = utils.str2bytes(iv0);
+        hmac0Act = await _webHashHMAC(cText.finalize(), intKey); 
 
-        hmac0Act = await _webHashHMAC(cText.finalize(), intKeyArr); 
+        let pText;
 
-        // dirty cheat to add encrypted block pkcs7 padding if mod = 0
-        // because WebCrypto subtle working only with pkcs7 pad
-        if( fs16 == 0 ) {
-            let modBlock = new Uint8Array(info.AESBlockSize);
-
-            // xor padding with last block (see mode AES-CBC)
-            for( let i = 0; i < info.AESBlockSize;i++ ) {
-                modBlock[i] = 0x00 ^ cText.get(file.getLength() - info.AESBlockSize + i);
-            }
-
-            modBlockEncrypted = await _webEncryptAes(modBlock, intKeyArr, iv0Arr);
-
-            cText.appendBytes(modBlockEncrypted);
-        }
-
-        let pText = await _webDecryptAes(cText.finalize(), intKeyArr, iv0Arr);
-
-        // clear empty data pkcs7 padding block
-        if( fs16 == 0 ) {
-            pText = pText.slice(0, pText.length - info.AESBlockSize);
+        try{
+            pText = await _webDecryptAes(cText.finalize(), intKey, iv0, fs16);
+        } catch {
+            // AesCrypt on C# use PKCS7 in pad without full pad block
+            // webCrypt can't decrypt it
+            pText = await _webDecryptAes(cText.finalize(), intKey, iv0, 0);
+            let toremove = info.AESBlockSize - fs16;
+            pText = pText.slice(0, pText.length - toremove);
         }
 
         result.appendBytes(pText);
@@ -208,7 +185,7 @@ AesCrypt = function () {
         const iv1 = utils.urandom(info.AESBlockSize);
 
         // _stretch password and iv
-        const key = _stretch(passw, iv1);
+        const key = await _stretch(passw, iv1);
 
         // generate random main iv
         const iv0 = utils.urandom(info.AESBlockSize);
@@ -216,19 +193,16 @@ AesCrypt = function () {
         // generate random internal key
         const intKey = utils.urandom(32);
 
-        const intKeyArr = utils.str2bytes(intKey);
-
-        // instantiate another AES cipher
-        const encryptor1 = _createEncryptor(key, iv1);
+        let iv0_and_intkey = binaryArray();
+        iv0_and_intkey.appendBytes(iv0);
+        iv0_and_intkey.appendBytes(intKey);
 
         // encrypt main iv and key
-        const c_iv_key = encryptor1.process(utils.encode_to_words(iv0 + intKey)).toString(CryptoJS.enc.Latin1) + encryptor1.finalize().toString(CryptoJS.enc.Latin1);
+        const c_iv_key = await _webEncryptAes(iv0_and_intkey.finalize(), key, iv1);
 
-        //# calculate HMAC-SHA256 of the encrypted iv and key
-        const hmac1 = CryptoJS.algo.HMAC.create(CryptoJS.algo.SHA256, utils.encode_to_words(key));
-        hmac1.update(utils.encode_to_words(c_iv_key));
+        const hmac1 = await _webHashHMAC(c_iv_key, key);
 
-        return await _createAesCryptFormat(fileObj, iv1, c_iv_key, intKeyArr, hmac1, iv0, callback_progress);
+        return await _createAesCryptFormat(fileObj, iv1, c_iv_key, intKey, hmac1, iv0, callback_progress);
     }
 
     /* PRIVATE START */
@@ -295,24 +269,8 @@ AesCrypt = function () {
     // private class utils for usefull functions
     var utils = {
 
-        random_int: function(min, max) {
-            return Math.floor(Math.random() * (max - min) + min);
-        },
-
         urandom: function(length) {
-            let out = "";
-            for (let i = 0; i < length; i ++) {
-                out += String.fromCharCode(this.random_int(0, 256))
-            }
-            return out;
-        },
-
-        fillArray: function(value, len) {
-            let arr = [];
-            for (let i = 0; i < len; i ++) {
-                arr.push(value);
-            }
-            return arr;
+            return crypto.getRandomValues( new Uint8Array(length) );
         },
 
         arrToInt: function (arr) { // buffer is an UInt8Array
@@ -324,12 +282,8 @@ AesCrypt = function () {
             return CryptoJS.enc.Latin1.stringify(CryptoJS.enc.Uint8Arr.parse(bytes))
         },
 
-        str2bytes: function(str) {
-            return CryptoJS.enc.Uint8Arr.decode(CryptoJS.enc.Latin1.parse(str));
-        },
-
-        encode_to_words: function (input, enc = "Latin1") {
-            return CryptoJS.enc[enc].parse(input);
+        str2bytes: function(str, enc="Latin1") {
+            return CryptoJS.enc.Uint8Arr.decode(CryptoJS.enc[enc].parse(str));
         },
 
     }
@@ -369,10 +323,15 @@ AesCrypt = function () {
             return _data;
         };
 
+        function getLength() {
+            return _data.length;
+        }
+
         return {
             appendBytes: appendBytes,
             finalize: finalize,
             get: get,
+            getLength: getLength,
         }
     }
 
@@ -397,10 +356,10 @@ AesCrypt = function () {
         ) );
     }
 
-    async function _webEncryptAes(pText, intKeyArr, iv0) {
+    async function _webEncryptAes(pText, intKeyArr, iv0, stayLast=true) {
         let key_encoded = await _createKey(intKeyArr, "AES-CBC", ["encrypt", "decrypt"]);
 
-        return new Uint8Array( await crypto.subtle.encrypt(
+        let encrypted = new Uint8Array( await crypto.subtle.encrypt(
             {
                 name: "AES-CBC",
                 iv: iv0,
@@ -408,56 +367,74 @@ AesCrypt = function () {
             key_encoded,
             pText
         ) );
+
+        if( pText.length % info.AESBlockSize === 0 && stayLast == true ) {
+            encrypted = encrypted.slice(0, encrypted.length - info.AESBlockSize);
+        }
+
+        return encrypted;
     }
 
-    async function _webDecryptAes(cText, intKeyArr, iv0) {
-        let key_encoded = await _createKey(intKeyArr, "AES-CBC", ["encrypt", "decrypt"]);
+    async function _webHashSHA256(text) {
+        return new Uint8Array(await crypto.subtle.digest("SHA-256", text.buffer));
+    }
 
-        return new Uint8Array( await crypto.subtle.decrypt(
+    async function _webDecryptAes(cText, intKeyArr, iv0, fs16 = 0) {
+        let key_encoded = await _createKey(intKeyArr, "AES-CBC", ["encrypt", "decrypt"]);
+        let cTextArr = binaryArray(cText);
+
+        // dirty cheat to add encrypted block pkcs7 padding if mod = 0
+        // because WebCrypto subtle working only with pkcs7 pad
+        if( fs16 == 0 ) {
+            let modBlock = new Uint8Array(info.AESBlockSize);
+
+            // xor padding with last block (see mode AES-CBC)
+            for( let i = 0; i < info.AESBlockSize;i++ ) {
+                modBlock[i] = 0x00 ^ cText[cText.length - info.AESBlockSize + i];
+            }
+
+            modBlockEncrypted = await _webEncryptAes(modBlock, intKeyArr, iv0, false);
+
+            cTextArr.appendBytes(modBlockEncrypted);
+        }
+
+        let pText = new Uint8Array( await crypto.subtle.decrypt(
             {
                 name: "AES-CBC",
                 iv: iv0,
             },
             key_encoded,
-            cText
+            cTextArr.finalize()
         ) );
-    }
 
-    // create encryptor object with default options
-    function _createEncryptor(key, iv) {
-        return CryptoJS.algo.AES.createEncryptor(utils.encode_to_words(key), {
-            mode: CryptoJS.mode.CBC,
-            iv: CryptoJS.enc.Latin1.parse(iv),
-            padding: CryptoJS.pad.NoPadding,
-        });
-    }
+        // clear empty data pkcs7 padding block
+        if( fs16 == 0 ) {
+            pText = pText.slice(0, pText.length - info.AESBlockSize);
+        }
 
-    // create decryptor object with default options
-    function _createDecryptor(key, iv) {
-        return CryptoJS.algo.AES.createDecryptor(utils.encode_to_words(key), {
-            mode: CryptoJS.mode.CBC,
-            iv: CryptoJS.enc.Latin1.parse(iv),
-            padding: CryptoJS.pad.NoPadding,
-        });
+        return pText;
     }
 
     // stretch password and iv1
-    function _stretch(passw, iv1) {
+    async function _stretch(passw, iv1) {
         // hash the external iv and the password 8192 times
-        let digest = utils.encode_to_words(iv1 + ("\x00".repeat(16)));
+        let digest_tmp = binaryArray();
+        digest_tmp.appendBytes(iv1);
+        digest_tmp.appendBytes("\x00".repeat(16));
+
+        let digest = digest_tmp.finalize();
 
         for (let i = 0; i < 8192; i ++) {
-            let passHash = CryptoJS.algo.SHA256.create();
-            passHash.update(digest);
-            passHash.update(utils.encode_to_words(passw, "Utf16LE"));
-            digest = passHash.finalize();
+            let passHash = binaryArray(digest);
+            passHash.appendBytes(utils.str2bytes(passw, "Utf16LE"));
+            digest = await _webHashSHA256(passHash.finalize(0));
         }
 
-        return digest.toString(CryptoJS.enc.Latin1);
+        return digest;
     }
 
     // see https://www.aescrypt.com/aes_file_format.html
-    async function _createAesCryptFormat(fileObj, iv1, c_iv_key, intKeyArr, hmac1, iv0, callback_progress) {
+    async function _createAesCryptFormat(fileObj, iv1, c_iv_key, intKey, hmac1, iv0, callback_progress) {
         let result = binaryArray();
 
         // header
@@ -486,7 +463,7 @@ AesCrypt = function () {
         result.appendBytes([0x0, 0x80]);
 
         // "container" extension
-        result.appendBytes(utils.fillArray(0x0, 128));
+        result.appendBytes("\x00".repeat(128));
 
         // end-of-extensions tag
         result.appendBytes([0x0, 0x0]);
@@ -499,7 +476,7 @@ AesCrypt = function () {
         result.appendBytes(c_iv_key);
 
         // HMAC-SHA256 of the encrypted iv and key
-        result.appendBytes(hmac1.finalize().toString(CryptoJS.enc.Latin1));
+        result.appendBytes(hmac1);
 
         let file = new fileReader(fileObj);
         let bytesRead = file.getLength();
@@ -510,15 +487,9 @@ AesCrypt = function () {
         // file size mod 16, lsb positions
         let fs16 = String.fromCharCode(bytesRead % info.AESBlockSize);
 
-        let iv0_U8 = utils.str2bytes(iv0);
+        cText = await _webEncryptAes(pText.finalize(), intKey ,iv0);
 
-        cText = await _webEncryptAes(pText.finalize(), intKeyArr ,iv0_U8)
-
-        if( bytesRead % info.AESBlockSize == 0 ) {
-            cText = cText.slice(0, cText.length - 16);
-        }
-
-        hmac0 = await _webHashHMAC(cText, intKeyArr);
+        hmac0 = await _webHashHMAC(cText, intKey);
 
         result.appendBytes(cText);
 
