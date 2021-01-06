@@ -1,4 +1,5 @@
 /** global: fileBytesReader */
+/** global: FileReader */
 
 /**
  * read file as string, bytes (uint8Array), int (1 byte)

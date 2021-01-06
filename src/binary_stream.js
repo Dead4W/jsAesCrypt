@@ -14,7 +14,7 @@
  *     binaryStream.appendBytes("\x07\x08\x09");
  *     console.log(binaryStream.finalize()) // returns Uint8Array [1,2,3,4,5,6,7,8,9]
  *
- * @param file a fileElement object
+ * @param arr origin array
  */
 const binaryStream = function(arr = []) {
     let _data = new Uint8Array(arr);
