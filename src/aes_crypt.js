@@ -1,3 +1,5 @@
+/** global: AesCrypt */
+
 AesCrypt = function () {
     let info = {
         // jsAesCrypt version

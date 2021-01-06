@@ -1,3 +1,5 @@
+/** global: binaryStream */
+
 /**
  * binary array stream object
  *

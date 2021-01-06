@@ -1,3 +1,5 @@
+/** global: webCryptSubtle */
+
 const webCryptSubtle = {
 
     _createKey: async function(intKeyArr, mode, functions) {
