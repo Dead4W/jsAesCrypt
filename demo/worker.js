@@ -3,11 +3,6 @@ let base_libs = "libs/";
 
 self.importScripts(
 	base_cdn + "core.min.js",
-	base_cdn + "cipher-core.min.js",
-	base_cdn + "aes.min.js",
-	base_cdn + "hmac.min.js",
-	base_cdn + "sha256.min.js",
-	base_cdn + "pad-nopadding.min.js",
 	base_cdn + "enc-utf16.min.js",
 	base_libs + "enc-uint8array.min.js",
 	base_libs + "aes_crypt.min.js",
