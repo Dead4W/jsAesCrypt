@@ -1,6 +1,6 @@
 # jsAesCrypt
 
-[![HitCount](http://hits.dwyl.com/dead4w/jsaescrypt.svg)](http://hits.dwyl.com/dead4w/jsaescrypt/)
+[![HitCount](http://hits.dwyl.com/Dead4W/jsAesCrypt.svg)](http://hits.dwyl.com/Dead4W/jsAesCrypt)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/22824d9dd7ae46ceb865bc2a5cded250)](https://www.codacy.com/gh/Dead4W/jsAesCrypt/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Dead4W/jsAesCrypt&amp;utm_campaign=Badge_Grade)
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/badges/quality-score.png?b=main&r=1)](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/?branch=main)
 
