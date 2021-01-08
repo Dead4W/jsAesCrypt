@@ -130,7 +130,7 @@
 		    };
 		}());
 
-		let aes = AesCrypt();
+		let aes = aesCrypt();
 
 		function encryptFileWorker() {
 			myWorker.postMessage(["ENCRYPT", file, passw, file_name]);

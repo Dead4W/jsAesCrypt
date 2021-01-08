@@ -56,9 +56,9 @@ const fileBytesReader = function(file) {
     }
 
     return {
-        readByte: readByte,
-        readBytes: readBytes,
-        getCurrentPosition: getCurrentPosition,
-        getLength: getLength,
+        readByte,
+        readBytes,
+        getCurrentPosition,
+        getLength,
     };
 };

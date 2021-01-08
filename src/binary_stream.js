@@ -23,8 +23,8 @@ const binaryStream = function(arr = []) {
         let tmp;
 
         if (typeof (input) == "number") {
-            let hex_string = input.toString(16);
-            tmp = new Uint8Array(hex_string.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+            let hex = input.toString(16);
+            tmp = new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
         } else if (typeof (input) == "string") {
             tmp = new Uint8Array(input.length);
             for (let i = 0; i < input.length; i ++) {
@@ -34,12 +34,12 @@ const binaryStream = function(arr = []) {
             tmp = new Uint8Array(input);
         }
 
-        let new_uint8_arr = new Uint8Array(_data.length + tmp.length);
+        let tmpArr = new Uint8Array(_data.length + tmp.length);
 
-        new_uint8_arr.set(_data);
-        new_uint8_arr.set(tmp, _data.length);
+        tmpArr.set(_data);
+        tmpArr.set(tmp, _data.length);
 
-        _data = new_uint8_arr;
+        _data = tmpArr;
     };
 
     function get(i) {
@@ -55,9 +55,9 @@ const binaryStream = function(arr = []) {
     }
 
     return {
-        appendBytes: appendBytes,
-        finalize: finalize,
-        get: get,
-        getLength: getLength,
+        appendBytes,
+        finalize,
+        get,
+        getLength,
     }
 }

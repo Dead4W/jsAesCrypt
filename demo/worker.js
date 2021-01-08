@@ -1,40 +1,31 @@
-let base_cdn = "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/";
-let base_libs = "libs/";
+let cdnPath = "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/";
+let libPath = "libs/";
 
 self.importScripts(
-	base_cdn + "core.min.js",
-	base_cdn + "enc-utf16.min.js",
-	base_libs + "enc-uint8array.min.js",
-	base_libs + "aes_crypt.min.js",
+	cdnPath + "core.min.js",
+	cdnPath + "enc-utf16.min.js",
+	libPath + "enc-uint8array.min.js",
+	libPath + "aes_crypt.min.js",
 );
-
-let last_progress = 0;
-
-function callback_progress(c) {
-	let progress = Math.floor(c*100);
-	if( last_progress === progress ) return;
-
-	postMessage(["PROGRESS", last_progress = progress]);
-}
 
 onmessage = function(e) {
 	let data = e.data;
 	let action = data[0];
 
 	if( action === "ENCRYPT" || action === "DECRYPT" ) {
-		let aes = AesCrypt();
+		let aes = aesCrypt();
 
 		let file = data[1];
-		let file_name = data[3];
+		let fileName = data[3];
 		let passw = data[2];
 
 		if( action === "ENCRYPT" ) {
-				aes.encrypt(file, passw, callback_progress).then((r) => {
-					postMessage(["ENCRYPT", r, file_name + ".aes"]);
+				aes.encrypt(file, passw).then((r) => {
+					postMessage(["ENCRYPT", r, fileName + ".aes"]);
 				});
 		} else {
-			aes.decrypt(file, passw, callback_progress).then((r) => {
-				postMessage(["DECRYPT", r, file_name.split('.').slice(0, -1).join('.')]);
+			aes.decrypt(file, passw).then((r) => {
+				postMessage(["DECRYPT", r, fileName.split('.').slice(0, -1).join('.')]);
 			});
 		}
 	}

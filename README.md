@@ -34,7 +34,7 @@ Here is an example showing encryption and decryption of a file:
 
 ```javascript
 // Init aesCrypt library
-const aes = AesCrypt();
+const aes = aesCrypt();
 
 let fileSecret = document.getElementById("fileSecret").files[0];
 
