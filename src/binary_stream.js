@@ -1,4 +1,4 @@
-/** global: BinaryStream */
+/** global: aesCrypt */
 
 /**
  * binary array stream object

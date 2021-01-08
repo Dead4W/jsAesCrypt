@@ -1,5 +1,4 @@
-/** global: FileBytesReader */
-/** global: FileReader */
+/** global: aesCrypt */
 
 /**
  * read file as string, bytes (uint8Array), int (1 byte)

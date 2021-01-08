@@ -1,4 +1,4 @@
-/** global: webCryptSubtle */
+/** global: aesCrypt */
 
 (function () {
     let LIB = aesCrypt;
