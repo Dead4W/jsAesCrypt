@@ -1,7 +1,8 @@
 # jsAesCrypt
 
-[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/badges/quality-score.png?b=main&r=1)](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/?branch=main)
 [![HitCount](http://hits.dwyl.com/dead4w/jsaescrypt.svg)](http://hits.dwyl.com/dead4w/jsaescrypt/)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/22824d9dd7ae46ceb865bc2a5cded250)](https://www.codacy.com/gh/Dead4W/jsAesCrypt/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Dead4W/jsAesCrypt&amp;utm_campaign=Badge_Grade)
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/badges/quality-score.png?b=main&r=1)](https://scrutinizer-ci.com/g/Dead4W/jsAesCrypt/?branch=main)
 
 ![Code size](https://img.shields.io/github/languages/code-size/dead4w/jsaescrypt.svg)
 ![Lines of Code](https://tokei.rs/b1/github/dead4w/jsaescrypt?category=code)
@@ -34,7 +35,7 @@ Here is an example showing encryption and decryption of a file:
 
 ```javascript
 // Init aesCrypt library
-const aes = aesCrypt();
+const aes = aesCrypt;
 
 let fileSecret = document.getElementById("fileSecret").files[0];
 
