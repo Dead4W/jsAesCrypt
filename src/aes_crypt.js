@@ -30,7 +30,7 @@ var aesCrypt;
         },
 
         arrToInt (arr) { // buffer is an UInt8Array
-            return parseInt(Array.prototype.map.call(arr, x => ("00" + x.toString(16)).slice(-2)).join(''), 16);
+            return parseInt(Array.prototype.map.call((arr, x) => ("00" + x.toString(16)).slice(-2)).join(""), 16);
         },
 
         // bytes is typed array
@@ -169,7 +169,7 @@ var aesCrypt;
                     fdata
                 );
             }
-        } while(fdata > 0)
+        } while(fdata > 0);
     }
 
     async function getIvKey(file, passw) {

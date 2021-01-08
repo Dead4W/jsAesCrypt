@@ -58,6 +58,6 @@
             appendBytes,
             finalize,
             getLength,
-        }
+        };
     };
 }());
