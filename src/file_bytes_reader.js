@@ -39,6 +39,10 @@
         }
 
         async function readBytes(length) {
+            if( _fileSize - _i < length ) {
+                throw ("File is corrupted.");
+            }
+            
             return await readChunk(length);
         }
 

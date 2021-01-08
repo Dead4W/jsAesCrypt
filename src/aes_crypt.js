@@ -175,24 +175,15 @@ var aesCrypt;
     async function getIvKey(file, passw) {
         // read external iv
         let iv1 = await file.readBytes(16);
-        if( iv1.length !== 16 ) {
-            throw ("File is corrupted.");
-        }
 
         // _stretch password and iv
         let key = await _stretch(passw, iv1);
 
         // read encrypted main iv and key
         let ivKey = await file.readBytes(48);
-        if( ivKey.length !== 48 ) {
-            throw ("File is corrupted.");
-        }
 
         // read HMAC-SHA256 of the encrypted iv and key
         let hmac1 = utils.bytes2str( await file.readBytes(32) );
-        if( hmac1.length !== 32 ) {
-            throw ("File is corrupted.");
-        }
 
         let hmac1Act = await self.webCryptSubtle.webHashHMAC(ivKey, key);
 
@@ -222,10 +213,6 @@ var aesCrypt;
      */
 
     async function decrypt(fileObj, passw) {
-        if( passw.length > info.maxPassLen ) {
-            throw ("Password is too long.");
-        }
-
         // file bytes reader
         let file = new self.FileBytesReader(fileObj);
 
@@ -248,10 +235,6 @@ var aesCrypt;
         let hmac0Act = await self.webCryptSubtle.webHashHMAC(cText.finalize(), intKey);
 
         let hmac0 = utils.bytes2str( await file.readBytes(32) );
-
-        if( hmac0.length !== 32 ) {
-            throw ("File is corrupted.");
-        }
 
         if( hmac0 !== utils.bytes2str(hmac0Act) ) {
             throw ("Bad HMAC (file is corrupted).");
