@@ -133,7 +133,7 @@ var aesCrypt;
         return await result.finalize();
     }
 
-    async function checkHeaderFile(file) {
+    async function checkAesFormat(file) {
         // check if file is in AES Crypt format (also min length check)
         if( utils.bytes2str( await file.readBytes(3) ) !== "AES" ) {
             throw (
@@ -148,24 +148,26 @@ var aesCrypt;
                 "jsAesCrypt is only compatible with version \n" +
                         "2 of the AES Crypt file format.");
         }
+    }
+
+    async function checkHeaderFile(file) {
+        await checkAesFormat(file);
 
         // skip reserved byte
         await file.readByte();
 
-        let fdata;
+        let extLength;
 
         // skip all the extensions
         do {
-            fdata = await file.readBytes(2);
+            extLength = +utils.arrToInt(await file.readBytes(2));
 
-            fdata = +utils.arrToInt(fdata);
-
-            if( fdata > 0 ) {
+            if( extLength > 0 ) {
                 await file.readBytes(
-                    fdata
+                    extLength
                 );
             }
-        } while(fdata > 0);
+        } while(extLength > 0);
     }
 
     async function getIvKey(file, passw) {
