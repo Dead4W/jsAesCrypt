@@ -23,19 +23,20 @@
         let _data = new Uint8Array(arr);
 
         function appendBytes(input) {
-            let tmp;
+            let tmp = [];
 
             if (typeof (input) == "number") {
                 let hex = input.toString(16);
-                tmp = new Uint8Array(hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
+                tmp = hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16));
             } else if (typeof (input) == "string") {
-                tmp = new Uint8Array(input.length);
                 for (let i = 0; i < input.length; i ++) {
-                    tmp[i] = input.charCodeAt(i);
+                    tmp.push(input.charCodeAt(i));
                 }
             } else {
-                tmp = new Uint8Array(input);
+                tmp = input;
             }
+
+            tmp = new Uint8Array(tmp);
 
             let tmpArr = new Uint8Array(_data.length + tmp.length);
 
@@ -43,10 +44,6 @@
             tmpArr.set(tmp, _data.length);
 
             _data = tmpArr;
-        }
-
-        function get(i) {
-            return _data[i];
         }
 
         function finalize() {
@@ -60,7 +57,6 @@
         return {
             appendBytes,
             finalize,
-            get,
             getLength,
         }
     };

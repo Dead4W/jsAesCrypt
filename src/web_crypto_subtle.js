@@ -60,7 +60,7 @@
 
                 // xor padding with last block (see mode AES-CBC)
                 for( let i = 0; i < LIB.info.AESBlockSize;i++ ) {
-                    modBlock.push(0x00 ^ cText[cText.length - LIB.info.AESBlockSize + i])
+                    modBlock.push(0x00 ^ cText[cText.length - LIB.info.AESBlockSize + i]);
                 }
 
                 cTextArr.appendBytes( await this.webEncryptAes(new Uint8Array(modBlock), intKeyArr, iv0, false) );

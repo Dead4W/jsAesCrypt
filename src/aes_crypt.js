@@ -30,7 +30,7 @@ var aesCrypt;
         },
 
         arrToInt (arr) { // buffer is an UInt8Array
-            return parseInt(Array.prototype.map.call(arr, x => ('00' + x.toString(16)).slice(-2)).join(''), 16);
+            return parseInt(Array.prototype.map.call(arr, x => ("00" + x.toString(16)).slice(-2)).join(''), 16);
         },
 
         // bytes is typed array
@@ -38,13 +38,13 @@ var aesCrypt;
             return CryptoJS.enc.Latin1.stringify(CryptoJS.enc.Uint8Arr.parse(bytes));
         },
 
-    }
+    };
 
     /* PRIVATE START */
 
     // stretch password and iv1
     async function _stretch(passw, iv1) {
-        let passwArr = CryptoJS.enc.Uint8Arr.decode(CryptoJS.enc.Utf16LE.parse(passw))
+        let passwArr = CryptoJS.enc.Uint8Arr.decode(CryptoJS.enc.Utf16LE.parse(passw));
 
         
         // add 16 null bytes to iv1 at the end
@@ -133,31 +133,7 @@ var aesCrypt;
         return await result.finalize();
     }
 
-    /* PRIVATE END */
-
-    /**
-     * decrypt typed array
-     *
-     *
-     * @return The Uint8Array.
-     *
-     * @static
-     *
-     * @example
-     *     var decrypted = decrypt(typedArray, Password);
-     *
-     * @param fileObj file element object
-     * @param passw string password to decrypt
-     */
-
-    async function decrypt(fileObj, passw) {
-        if( passw.length > info.maxPassLen ) {
-            throw ("Password is too long.");
-        }
-
-        // file bytes reader
-        let file = new self.FileBytesReader(fileObj);
-
+    async function checkHeaderFile(file) {
         // check if file is in AES Crypt format (also min length check)
         if( utils.bytes2str( await file.readBytes(3) ) !== "AES" || file.getLength() < 136 ) {
             throw (
@@ -176,9 +152,11 @@ var aesCrypt;
         // skip reserved byte
         await file.readByte();
 
+        let fdata;
+
         // skip all the extensions
-        while(true) {
-            let fdata = await file.readBytes(2);
+        do {
+            fdata = await file.readBytes(2);
 
             if( fdata.length < 2 ) {
                 throw ("File is corrupted.");
@@ -186,15 +164,15 @@ var aesCrypt;
 
             fdata = +utils.arrToInt(fdata);
 
-            if( fdata === 0 ) {
-                break;
+            if( fdata > 0 ) {
+                await file.readBytes(
+                    fdata
+                );
             }
+        } while(fdata > 0)
+    }
 
-            await file.readBytes(
-                fdata
-            );
-        }
-
+    async function getIvKey(file, passw) {
         // read external iv
         let iv1 = await file.readBytes(16);
         if( iv1.length !== 16 ) {
@@ -223,35 +201,51 @@ var aesCrypt;
             throw ("Wrong password (or file is corrupted).");
         }
 
-        ivKey = await self.webCryptSubtle.webDecryptAes(ivKey, key, iv1, 0);
+        return await self.webCryptSubtle.webDecryptAes(ivKey, key, iv1, 0);
+    }
+
+    /* PRIVATE END */
+
+    /**
+     * decrypt typed array
+     *
+     *
+     * @return The Uint8Array.
+     *
+     * @static
+     *
+     * @example
+     *     var decrypted = decrypt(typedArray, Password);
+     *
+     * @param fileObj file element object
+     * @param passw string password to decrypt
+     */
+
+    async function decrypt(fileObj, passw) {
+        if( passw.length > info.maxPassLen ) {
+            throw ("Password is too long.");
+        }
+
+        // file bytes reader
+        let file = new self.FileBytesReader(fileObj);
+
+        await checkHeaderFile(file);
+
+        let ivKey = await getIvKey(file, passw);
 
         // get internal iv and key
         let iv0 = ivKey.slice(0, info.AESBlockSize);
         let intKey = ivKey.slice(info.AESBlockSize, info.AESBlockSize+32);
 
-        let result = new self.BinaryStream();
-
+        // create binary stream for cipher text
         let cText = new self.BinaryStream( await file.readBytes(
             file.getLength() - file.getCurrentPosition() - 32 - 1,
         ));
 
         let fs16 = utils.arrToInt(await file.readBytes(1));
 
-        let hmac0Act = await self.webCryptSubtle.webHashHMAC(cText.finalize(), intKey); 
-
-        let pText;
-
-        try{
-            pText = await self.webCryptSubtle.webDecryptAes(cText.finalize(), intKey, iv0, fs16);
-        } catch {
-            // AesCrypt on C# use PKCS7 in pad without full pad block
-            // webCrypt can't decrypt it without force cheat with fs16 = 0
-            pText = await self.webCryptSubtle.webDecryptAes(cText.finalize(), intKey, iv0, 0);
-            let toremove = info.AESBlockSize - fs16;
-            pText = pText.slice(0, pText.length - toremove);
-        }
-
-        result.appendBytes(pText);
+        // hash cipher text for check on corrupt
+        let hmac0Act = await self.webCryptSubtle.webHashHMAC(cText.finalize(), intKey);
 
         let hmac0 = utils.bytes2str( await file.readBytes(32) );
 
@@ -263,7 +257,17 @@ var aesCrypt;
             throw ("Bad HMAC (file is corrupted).");
         }
 
-        return result.finalize();
+        let pText;
+
+        try{
+            return await self.webCryptSubtle.webDecryptAes(cText.finalize(), intKey, iv0, fs16);
+        } catch {
+            // AesCrypt on C# use PKCS7 in pad without full pad block
+            // webCrypt can't decrypt it without force cheat with fs16 = 0
+            let pText = await self.webCryptSubtle.webDecryptAes(cText.finalize(), intKey, iv0, 0);
+            let toremove = info.AESBlockSize - fs16;
+            return pText.slice(0, pText.length - toremove);
+        }
     }
 
     /**
@@ -317,6 +321,8 @@ var aesCrypt;
         info
     };
 
-    if( typeof(window) !== "undefined" ) window.aesCrypt = self;
+    if( typeof(window) !== "undefined" ) {
+        window.aesCrypt = self;
+    }
 
 }());

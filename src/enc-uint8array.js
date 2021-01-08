@@ -38,7 +38,7 @@
                 intArray.push(bite);
             }
 
-            return new Uint8Array(intArray)
+            return new Uint8Array(intArray);
         },
 
         /**
