@@ -13,7 +13,7 @@ onmessage = function(e) {
 	let action = data[0];
 
 	if( action === "ENCRYPT" || action === "DECRYPT" ) {
-		let aes = aesCrypt();
+		let aes = aesCrypt;
 
 		let file = data[1];
 		let fileName = data[3];

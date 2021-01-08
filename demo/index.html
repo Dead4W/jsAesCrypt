@@ -3,7 +3,7 @@
 	<title></title>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/core.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/enc-utf16.min.js"></script>
-	<script src="libs/enc-uint8array.min.js"></script>
+	<script src="libs/enc-uint8array.js"></script>
 	<script src="libs/aes_crypt.min.js"></script>
 	<style>
 		.app {
@@ -49,12 +49,6 @@
 		<button onclick="initButton('file');encryptFileWorker();return false;">Encrypt File WORKER</button>
 		<br>
 		<button onclick="initButton('file');decryptFileWorker();return false;">Decrypt File WORKER</button>
-		<br>
-		<progress id="progress" value="0" max="100">
-		Worker progress bar
-		</progress>
-		<br>
-		<span id="time_left_title">Осталось: </span><span id="time_left"></span>
 	</div>
 	<script type="text/javascript">
 
@@ -81,9 +75,6 @@
 		function restartWorker() {
 			if( myWorker !== null ) myWorker.terminate();
 
-			time_left.style.display = "none";
-			time_left_title.style.display = "none";
-
 			myWorker = new Worker("worker.js");
 
 			myWorker.onmessage = function(e) {
@@ -95,22 +86,9 @@
 					restartWorker();
 
 					saveByteArray(data[1], data[2]);
-				} else if( action === "PROGRESS" ) {
-					time_left.style.display = "unset";
-					time_left_title.style.display = "unset";
-					let runtime = +(new Date()) - start;
-					let left = Math.ceil((100 - +data[1]) * (runtime / +data[1]) / 1000);
-
-					progress.value = +data[1];
-					time_left_title.innerText = "Осталось: ";
-					time_left.innerText = left + " " + declOfNum(left, ['секунда', 'секунды', 'секунд']);
 				}
 			}
 		}
-
-		var progress = document.getElementById("progress");
-		var time_left_title = document.getElementById("time_left_title");
-		var time_left = document.getElementById("time_left");
 
 		restartWorker();
 
@@ -130,7 +108,7 @@
 		    };
 		}());
 
-		let aes = aesCrypt();
+		let aes = aesCrypt;
 
 		function encryptFileWorker() {
 			myWorker.postMessage(["ENCRYPT", file, passw, file_name]);

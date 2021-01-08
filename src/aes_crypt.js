@@ -1,9 +1,9 @@
 /** global: aesCrypt */
-/** global: webCryptSubtle */
-/** global: fileBytesReader */
-/** global: binaryStream */
 
-aesCrypt = function () {
+var aesCrypt;
+
+(function () {
+
     let info = {
         // jsAesCrypt version
         version: "0.15",
@@ -33,7 +33,7 @@ aesCrypt = function () {
 
         // bytes is typed array
         bytes2str(bytes) {
-            return CryptoJS.enc.Latin1.stringify(CryptoJS.enc.Uint8Arr.parse(bytes))
+            return CryptoJS.enc.Latin1.stringify(CryptoJS.enc.Uint8Arr.parse(bytes));
         },
 
         str2bytes(str, enc="Latin1") {
@@ -61,18 +61,16 @@ aesCrypt = function () {
     async function decrypt(fileObj, passw) {
         if( passw.length > info.maxPassLen ) {
             throw ("Password is too long.");
-            return false;
         }
 
         // file bytes reader
-        let file = fileBytesReader(fileObj);
+        let file = new self.FileBytesReader(fileObj);
 
         // check if file is in AES Crypt format (also min length check)
         if( utils.bytes2str( await file.readBytes(3) ) !== "AES" || file.getLength() < 136 ) {
             throw (
                 "File is corrupted or not an AES Crypt \n" +
                         "(or jsAesCrypt) file.");
-            return false;
         }
 
         // check if file is in AES Crypt format, version 2
@@ -81,7 +79,6 @@ aesCrypt = function () {
             throw (
                 "jsAesCrypt is only compatible with version \n" +
                         "2 of the AES Crypt file format.");
-            return false;
         }
 
         // skip reserved byte
@@ -93,7 +90,6 @@ aesCrypt = function () {
 
             if( fdata.length < 2 ) {
                 throw ("File is corrupted.");
-                return false;
             }
 
             fdata = +utils.arrToInt(fdata);
@@ -111,7 +107,6 @@ aesCrypt = function () {
         let iv1 = await file.readBytes(16);
         if( iv1.length !== 16 ) {
             throw ("File is corrupted.");
-            return false;
         }
 
         // _stretch password and iv
@@ -121,48 +116,45 @@ aesCrypt = function () {
         let ivKey = await file.readBytes(48);
         if( ivKey.length !== 48 ) {
             throw ("File is corrupted.");
-            return false;
         }
 
         // read HMAC-SHA256 of the encrypted iv and key
         let hmac1 = utils.bytes2str( await file.readBytes(32) );
         if( hmac1.length !== 32 ) {
             throw ("File is corrupted.");
-            return false;
         }
 
-        let hmac1Act = await webCryptSubtle.webHashHMAC(ivKey, key);
+        let hmac1Act = await self.webCryptSubtle.webHashHMAC(ivKey, key);
 
         // HMAC check
         if( hmac1 !== utils.bytes2str(hmac1Act) ) {
             throw ("Wrong password (or file is corrupted).");
-            return false;
         }
 
-        ivKey = await webCryptSubtle.webDecryptAes(ivKey, key, iv1, 0);
+        ivKey = await self.webCryptSubtle.webDecryptAes(ivKey, key, iv1, 0);
 
         // get internal iv and key
         let iv0 = ivKey.slice(0, info.AESBlockSize);
         let intKey = ivKey.slice(info.AESBlockSize, info.AESBlockSize+32);
 
-        let result = binaryStream();
+        let result = new self.BinaryStream();
 
-        let cText = binaryStream( await file.readBytes(
+        let cText = new self.BinaryStream( await file.readBytes(
             file.getLength() - file.getCurrentPosition() - 32 - 1,
         ));
 
         let fs16 = utils.arrToInt(await file.readBytes(1));
 
-        hmac0Act = await webCryptSubtle.webHashHMAC(cText.finalize(), intKey); 
+        let hmac0Act = await self.webCryptSubtle.webHashHMAC(cText.finalize(), intKey); 
 
         let pText;
 
         try{
-            pText = await webCryptSubtle.webDecryptAes(cText.finalize(), intKey, iv0, fs16);
+            pText = await self.webCryptSubtle.webDecryptAes(cText.finalize(), intKey, iv0, fs16);
         } catch {
             // AesCrypt on C# use PKCS7 in pad without full pad block
             // webCrypt can't decrypt it without force cheat with fs16 = 0
-            pText = await webCryptSubtle.webDecryptAes(cText.finalize(), intKey, iv0, 0);
+            pText = await self.webCryptSubtle.webDecryptAes(cText.finalize(), intKey, iv0, 0);
             let toremove = info.AESBlockSize - fs16;
             pText = pText.slice(0, pText.length - toremove);
         }
@@ -173,12 +165,10 @@ aesCrypt = function () {
 
         if( hmac0.length !== 32 ) {
             throw ("File is corrupted.");
-            return false;
         }
 
         if( hmac0 !== utils.bytes2str(hmac0Act) ) {
             throw ("Bad HMAC (file is corrupted).");
-            return false;
         }
 
         return result.finalize();
@@ -202,7 +192,6 @@ aesCrypt = function () {
     async function encrypt(fileObj, passw) {
         if( passw.length > info.maxPassLen ) {
             throw ("Password is too long.");
-            return false;
         }
 
         // encryption key
@@ -217,37 +206,38 @@ aesCrypt = function () {
         // generate random internal key
         const intKey = utils.urandom(32);
 
-        let ivKey = binaryStream();
+        let ivKey = new self.BinaryStream();
         ivKey.appendBytes(iv0);
         ivKey.appendBytes(intKey);
 
         // encrypt main iv and key
-        ivKey = await webCryptSubtle.webEncryptAes(ivKey.finalize(), key, iv1);
+        ivKey = await self.webCryptSubtle.webEncryptAes(ivKey.finalize(), key, iv1);
 
-        const hmac1 = await webCryptSubtle.webHashHMAC(ivKey, key);
+        const hmac1 = await self.webCryptSubtle.webHashHMAC(ivKey, key);
 
         return await _createAesCryptFormat(fileObj, iv1, ivKey, intKey, hmac1, iv0);
     }
 
     /* PRIVATE START */
 
-    // IMPORT webCryptSubtle THIS
-    // IMPORT fileBytesReader THIS
-    // IMPORT binaryStream THIS
-
     // stretch password and iv1
     async function _stretch(passw, iv1) {
-        // hash the external iv and the password 8192 times
-        let digest = binaryStream();
+        let passwArr = CryptoJS.enc.Uint8Arr.decode(CryptoJS.enc.Utf16LE.parse(passw))
+
+        
+        // add 16 null bytes to iv1 at the end
+        let digest = new self.BinaryStream();
         digest.appendBytes(iv1);
         digest.appendBytes("\x00".repeat(16));
 
         digest = digest.finalize();
 
+
+        // hash the external iv and the password 8192 times
         for (let i = 0; i < 8192; i ++) {
-            let passHash = binaryStream(digest);
-            passHash.appendBytes(utils.str2bytes(passw, "Utf16LE"));
-            digest = await webCryptSubtle.webHashSHA256(passHash.finalize(0));
+            let passHash = new self.BinaryStream(digest);
+            passHash.appendBytes(passwArr);
+            digest = await self.webCryptSubtle.webHashSHA256(passHash.finalize());
         }
 
         return digest;
@@ -255,7 +245,7 @@ aesCrypt = function () {
 
     // see https://www.aescrypt.com/aes_file_format.html
     async function _createAesCryptFormat(fileObj, iv1, ivKey, intKey, hmac1, iv0) {
-        let result = binaryStream();
+        let result = new self.BinaryStream();
 
         // header
         result.appendBytes("AES");
@@ -298,18 +288,18 @@ aesCrypt = function () {
         // HMAC-SHA256 of the encrypted iv and key
         result.appendBytes(hmac1);
 
-        let file = new fileBytesReader(fileObj);
+        let file = new self.FileBytesReader(fileObj);
         let bytesRead = file.getLength();
-        let pText = binaryStream( 
+        let pText = new self.BinaryStream( 
             await file.readBytes( file.getLength() )
         );
 
         // file size mod 16, lsb positions
         let fs16 = String.fromCharCode(bytesRead % info.AESBlockSize);
 
-        cText = await webCryptSubtle.webEncryptAes(pText.finalize(), intKey ,iv0);
+        let cText = await self.webCryptSubtle.webEncryptAes(pText.finalize(), intKey ,iv0);
 
-        hmac0 = await webCryptSubtle.webHashHMAC(cText, intKey);
+        let hmac0 = await self.webCryptSubtle.webHashHMAC(cText, intKey);
 
         result.appendBytes(cText);
 
@@ -321,13 +311,238 @@ aesCrypt = function () {
         return await result.finalize();
     }
 
-    webCryptSubtle.info = info;
-
-    return {
+    var self = aesCrypt = {
         encrypt,
         decrypt,
         utils,
         info
     };
 
-};
+    if( typeof(window) !== "undefined" ) window.aesCrypt = self;
+
+}());
+
+
+/** global: FileBytesReader */
+/** global: FileReader */
+
+/**
+ * read file as string, bytes (uint8Array), int (1 byte)
+ *
+ *
+ * @return The FileBytesReader object.
+ *
+ * @static
+ *
+ * @example
+ *     var fileElement = document.getElementById('file').files[0];
+ *     var file = new FileBytesReader(fileElement);
+ *
+ * @param file a fileElement object
+ */
+
+(function () {
+    let LIB = aesCrypt;
+    aesCrypt.FileBytesReader = function(file) {
+        let _i = 0;
+        let _fileSize = file.size;
+        let _reader = new FileReader();
+        let _file = file;
+
+        function readChunk(length) {
+            return new Promise((resolve, reject) => {
+                let blob = _file.slice(_i, _i += length);
+
+                _reader.onload = () => {
+                    // return Uint8Array
+                    resolve(new Uint8Array(_reader.result));
+                };
+
+                _reader.onerror = reject;
+
+                _reader.readAsArrayBuffer(blob);
+            });
+        }
+
+        async function readBytes(length) {
+            return await readChunk(length);
+        }
+
+        async function readByte() {
+            let bytes = await readBytes(1);
+            return bytes[0];
+        }
+
+        function getCurrentPosition() {
+            return _i;
+        }
+
+        function getLength() {
+            return _fileSize;
+        }
+
+        return {
+            readByte,
+            readBytes,
+            getCurrentPosition,
+            getLength,
+        };
+    };
+
+}());
+
+
+/** global: BinaryStream */
+
+/**
+ * binary array stream object
+ *
+ *
+ * @return The BinaryStream object.
+ *
+ * @static
+ *
+ * @example
+ *     var BinaryStream = BinaryStream([1,2,3]);
+ *     BinaryStream.appendBytes([4,5,6]);
+ *     BinaryStream.appendBytes("\x07\x08\x09");
+ *     console.log(BinaryStream.finalize()) // returns Uint8Array [1,2,3,4,5,6,7,8,9]
+ *
+ * @param arr origin array
+ */
+
+(function () {
+    let LIB = aesCrypt;
+    aesCrypt.BinaryStream = function(arr = []) {
+        let _data = new Uint8Array(arr);
+
+        function appendBytes(input) {
+            let tmp;
+
+            if (typeof (input) == "number") {
+                let hex = input.toString(16);
+                tmp = new Uint8Array(hex.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
+            } else if (typeof (input) == "string") {
+                tmp = new Uint8Array(input.length);
+                for (let i = 0; i < input.length; i ++) {
+                    tmp[i] = input.charCodeAt(i);
+                }
+            } else {
+                tmp = new Uint8Array(input);
+            }
+
+            let tmpArr = new Uint8Array(_data.length + tmp.length);
+
+            tmpArr.set(_data);
+            tmpArr.set(tmp, _data.length);
+
+            _data = tmpArr;
+        }
+
+        function get(i) {
+            return _data[i];
+        }
+
+        function finalize() {
+            return _data;
+        }
+
+        function getLength() {
+            return _data.length;
+        }
+
+        return {
+            appendBytes,
+            finalize,
+            get,
+            getLength,
+        }
+    };
+}());
+
+/** global: webCryptSubtle */
+
+(function () {
+    let LIB = aesCrypt;
+
+    aesCrypt.webCryptSubtle = {
+
+        async createKey(intKeyArr, mode, functions) {
+            return await crypto.subtle.importKey( "raw", intKeyArr.buffer,   mode ,  false,   functions);
+        },
+
+        async webHashHMAC(text, intKeyArr) {
+            let key = await this.createKey(
+                intKeyArr,
+                { // algorithm details
+                    name: "HMAC",
+                    hash: {name: "SHA-256"}
+                },
+                ["sign", "verify"],
+                );
+
+            return new Uint8Array( await crypto.subtle.sign(
+                "HMAC",
+                key,
+                text
+            ) );
+        },
+
+        async webEncryptAes(pText, intKeyArr, iv0, stayLast=true) {
+            let key = await this.createKey(intKeyArr, "AES-CBC", ["encrypt", "decrypt"]);
+
+            let encrypted = new Uint8Array( await crypto.subtle.encrypt(
+                {
+                    name: "AES-CBC",
+                    iv: iv0,
+                },
+                key,
+                pText
+            ) );
+
+            if( pText.length % LIB.info.AESBlockSize === 0 && stayLast === true ) {
+                encrypted = encrypted.slice(0, encrypted.length - LIB.info.AESBlockSize);
+            }
+
+            return encrypted;
+        },
+
+        async webHashSHA256(text) {
+            return new Uint8Array(await crypto.subtle.digest("SHA-256", text.buffer));
+        },
+
+        async webDecryptAes(cText, intKeyArr, iv0, fs16 = 0) {
+            let key = await this.createKey(intKeyArr, "AES-CBC", ["encrypt", "decrypt"]);
+            let cTextArr = new LIB.BinaryStream(cText);
+
+            // dirty cheat to add encrypted block pkcs7 padding if mod = 0
+            // because WebCrypto subtle working only with pkcs7 pad
+            if( fs16 === 0 ) {
+                let modBlock = [];
+
+                // xor padding with last block (see mode AES-CBC)
+                for( let i = 0; i < LIB.info.AESBlockSize;i++ ) {
+                    modBlock.push(0x00 ^ cText[cText.length - LIB.info.AESBlockSize + i])
+                }
+
+                cTextArr.appendBytes( await this.webEncryptAes(new Uint8Array(modBlock), intKeyArr, iv0, false) );
+            }
+
+            let pText = new Uint8Array( await crypto.subtle.decrypt(
+                {
+                    name: "AES-CBC",
+                    iv: iv0,
+                },
+                key,
+                cTextArr.finalize()
+            ) );
+
+            // clear empty data pkcs7 padding block
+            if( fs16 === 0 ) {
+                pText = pText.slice(0, pText.length - LIB.info.AESBlockSize);
+            }
+
+            return pText;
+        },
+    };
+}());
