@@ -135,7 +135,7 @@ var aesCrypt;
 
     async function checkHeaderFile(file) {
         // check if file is in AES Crypt format (also min length check)
-        if( utils.bytes2str( await file.readBytes(3) ) !== "AES" || file.getLength() < 136 ) {
+        if( utils.bytes2str( await file.readBytes(3) ) !== "AES" ) {
             throw (
                 "File is corrupted or not an AES Crypt \n" +
                         "(or jsAesCrypt) file.");
@@ -157,10 +157,6 @@ var aesCrypt;
         // skip all the extensions
         do {
             fdata = await file.readBytes(2);
-
-            if( fdata.length < 2 ) {
-                throw ("File is corrupted.");
-            }
 
             fdata = +utils.arrToInt(fdata);
 
