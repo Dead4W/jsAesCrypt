@@ -62,8 +62,6 @@ aes.decrypt(fileEncrypted, password).then((decrypted) => {
 
 **This is the most straightforward way to use jsAesCrypt, and should be preferred.**
 
-**jsAesCrypt version can slow working with big files (<100MB)**
-
 FAQs
 ------------------------
 - *Is jsAesCrypt malware?*
